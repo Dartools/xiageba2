@@ -1,62 +1,40 @@
-import { prisma } from "#server/lib/prisma";
+import {
+  SITEMAP_MAX_AGE,
+  SITEMAP_VARIES,
+  buildShardLocs,
+  countSitemapMusics,
+  countSitemapSources,
+  renderSitemapIndex,
+  totalPages,
+} from "#server/lib/sitemap";
 
-export default defineEventHandler(async (event) => {
-  const siteUrl = getRequestURL(event).origin;
+/**
+ * sitemap 索引
+ * GET /sitemap.xml
+ *
+ * robots.txt 里声明的 Sitemap 地址仍然是这里，无需改动。
+ */
+export default defineCachedEventHandler(
+  async (event) => {
+    const { origin } = getRequestURL(event);
 
-  const [sources, musics] = await Promise.all([
-    prisma.source.findMany({
-      where: { status: 1 },
-      select: { id: true, createdAt: true, updatedAt: true },
-      orderBy: { createdAt: "desc" },
-      take: 1000,
-    }),
-    prisma.music.findMany({
-      select: { id: true, createdAt: true, updatedAt: true },
-      orderBy: { createdAt: "desc" },
-      take: 1000,
-    }),
-  ]);
+    const [sourceTotal, musicTotal] = await Promise.all([
+      countSitemapSources(),
+      countSitemapMusics(),
+    ]);
 
-  const staticPages = [
-    { loc: "/", changefreq: "daily", priority: "1.0" },
-    { loc: "/page/policy", changefreq: "yearly", priority: "0.3" },
-    { loc: "/page/agree", changefreq: "yearly", priority: "0.3" },
-    { loc: "/page/privacy-policy", changefreq: "yearly", priority: "0.3" },
-    { loc: "/page/version", changefreq: "yearly", priority: "0.3" },
-    { loc: "/page/forbidden-keywords", changefreq: "weekly", priority: "0.3" },
-  ];
+    const entries = [
+      { loc: `${origin}/sitemap/static.xml` },
+      ...buildShardLocs(origin, "source", totalPages(sourceTotal)),
+      ...buildShardLocs(origin, "music", totalPages(musicTotal)),
+    ];
 
-  const urls = [
-    ...staticPages.map(
-      (p) => `  <url>
-    <loc>${siteUrl}${p.loc}</loc>
-    <changefreq>${p.changefreq}</changefreq>
-    <priority>${p.priority}</priority>
-  </url>`,
-    ),
-    ...sources.map(
-      (s) => `  <url>
-    <loc>${siteUrl}/source/${s.id}</loc>
-    <lastmod>${(s.updatedAt || s.createdAt).toISOString()}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>`,
-    ),
-    ...musics.map(
-      (m) => `  <url>
-    <loc>${siteUrl}/music/${m.id}</loc>
-    <lastmod>${(m.updatedAt || m.createdAt).toISOString()}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>`,
-    ),
-  ];
-
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.join("\n")}
-</urlset>`;
-
-  setResponseHeader(event, "content-type", "application/xml");
-  return xml;
-});
+    setResponseHeader(event, "content-type", "application/xml");
+    return renderSitemapIndex(entries);
+  },
+  {
+    maxAge: SITEMAP_MAX_AGE,
+    // <loc> 是绝对地址，随域名变化，缓存键必须按域名隔离
+    varies: SITEMAP_VARIES,
+  },
+);
