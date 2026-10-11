@@ -34,6 +34,7 @@ import {
   Sparkles,
   TrendingUp,
   Link2,
+  Palette,
 } from "@lucide/vue";
 
 /* =========================================================
@@ -122,6 +123,11 @@ const navItems: NavItem[] = [
     icon: Megaphone,
   },
   {
+    label: "页面管理",
+    path: "/admin/page",
+    icon: FileText,
+  },
+  {
     label: "管理员管理",
     path: "/admin/admins",
     icon: Users,
@@ -130,6 +136,11 @@ const navItems: NavItem[] = [
     label: "系统配置",
     icon: Settings,
     children: [
+      {
+        label: "页面装修",
+        path: "/admin/system/decorate",
+        icon: Palette,
+      },
       {
         label: "系统维护",
         path: "/admin/system/maintain",
@@ -302,7 +313,7 @@ const isPathActive = (path?: string) => {
    * ...
    */
   if (path === "/admin") {
-    return route.path === "/admin";
+    return route.path === path;
   }
 
   return route.path.startsWith(path);

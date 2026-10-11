@@ -62,10 +62,6 @@ export interface SitemapIndexEntry {
 /** 静态页面。数量固定，不需要分片。 */
 export const STATIC_PAGES: Omit<SitemapUrl, "loc">[] = [
   { path: "/", changefreq: "daily", priority: "1.0" },
-  { path: "/page/policy", changefreq: "yearly", priority: "0.3" },
-  { path: "/page/agree", changefreq: "yearly", priority: "0.3" },
-  { path: "/page/privacy-policy", changefreq: "yearly", priority: "0.3" },
-  { path: "/page/version", changefreq: "yearly", priority: "0.3" },
   { path: "/page/forbidden-keywords", changefreq: "weekly", priority: "0.3" },
 ];
 
@@ -200,6 +196,25 @@ export async function fetchMusicUrls(
     lastmod: lastmodOf(row.updatedAt, row.createdAt),
     changefreq: "weekly",
     priority: "0.7",
+  }));
+}
+
+/**
+ * 自定义页面（后台「页面管理」）的 sitemap 条目。
+ * 页面已由 STATIC_PAGES 中的硬编码路径改为数据库驱动，这里统一按 slug 生成。
+ */
+export async function fetchPageUrls(origin: string): Promise<SitemapUrl[]> {
+  const rows = await prisma.page.findMany({
+    where: { status: "PUBLISHED" },
+    select: { slug: true, createdAt: true, updatedAt: true },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return rows.map((row) => ({
+    loc: `${origin}/page/${row.slug}`,
+    lastmod: lastmodOf(row.updatedAt, row.createdAt),
+    changefreq: "monthly",
+    priority: "0.3",
   }));
 }
 

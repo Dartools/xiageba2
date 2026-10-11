@@ -125,6 +125,28 @@ model Config {
   value String @default("")
 }
 
+/// 自定义页面表（后台「页面管理」）
+model Page {
+  id        String     @id @default(cuid(2)) @db.VarChar(32)
+  slug      String     @unique @db.VarChar(100)
+  title     String     @db.VarChar(255)
+  content   String     @default("") @db.Text
+  icon      String     @default("file-text") @db.VarChar(50)
+  status    PageStatus @default(PUBLISHED)
+  sort      Int        @default(0) @db.SmallInt
+  createdAt DateTime   @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime?  @updatedAt @db.Timestamptz(3)
+
+  @@index([status])
+  @@index([sort])
+  @@index([createdAt])
+}
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+}
+
 model ApiList {
   id           String    @id @default(cuid(2))
   name         String

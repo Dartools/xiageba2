@@ -2,13 +2,6 @@ import path from "path";
 
 export default defineNuxtConfig({
   compatibilityDate: "2026-06-01",
-  devtools: {
-    enabled: true,
-  },
-  sourcemap: {
-    server: false,
-    client: false,
-  },
   modules: [
     "@comark/nuxt",
     "@nuxt/ui",
@@ -333,7 +326,7 @@ export default defineNuxtConfig({
     fallback: "dark",
   },
   features: {
-    inlineStyles: true ,
+    inlineStyles: true,
   },
   routeRules: {
     "/admin/**": { ssr: false, appLayout: "admin" },
@@ -344,10 +337,6 @@ export default defineNuxtConfig({
     "/": {
       ssr: true,
       isr: 300,
-      headers: {
-        "Cache-Control":
-          "public, max-age=60, s-maxage=300, stale-while-revalidate=300",
-      },
     },
     "/music/**": {
       ssr: true,
@@ -432,6 +421,13 @@ export default defineNuxtConfig({
     },
   },
   $production: {
+    devtools: {
+      enabled: false,
+    },
+    sourcemap: {
+      server: false,
+      client: false,
+    },
     legacy: {
       vite: {
         targets: [
@@ -448,6 +444,13 @@ export default defineNuxtConfig({
     },
   },
   $development: {
+    devtools: {
+      enabled: true,
+    },
+    sourcemap: {
+      server: true,
+      client: true,
+    },
     alias: {
       "@netdisk-sdk/baidu-sdk": path.resolve(
         __dirname,

@@ -3,7 +3,6 @@ import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useIntervalFn } from "@vueuse/core";
 import { useAuth } from "~/composables/useAuth";
-import { Globe } from "@lucide/vue";
 import { get, post } from "~/utils/request";
 
 useSeoMeta({
@@ -13,52 +12,10 @@ useSeoMeta({
 const router = useRouter();
 const { isLoggedIn, checkLogin, initialized } = useAuth();
 
-const loading = ref(true);
-
 const isRebuilding = ref(false);
 const rebuildMsg = ref("");
 const isClearing = ref(false);
 const clearMsg = ref("");
-
-// ============ 站点 SEO 配置 ============
-interface SiteSeoConfig {
-  site_seo_title: string;
-  site_seo_short_title: string;
-  site_seo_description: string;
-  site_icp_licence: string;
-}
-const siteSeoConfig = ref<SiteSeoConfig>({
-  site_seo_title: "",
-  site_seo_short_title: "",
-  site_seo_description: "",
-  site_icp_licence: "",
-});
-const savingSiteSeo = ref(false);
-const savedSiteSeo = ref(false);
-
-// 站点 SEO 配置
-const loadSiteSeoConfig = async () => {
-  const data = await get("/api/admin/config/site-seo");
-  if (data.data) {
-    siteSeoConfig.value = { ...siteSeoConfig.value, ...data.data };
-  }
-};
-
-const saveSiteSeoConfig = async () => {
-  savingSiteSeo.value = true;
-  savedSiteSeo.value = false;
-  try {
-    await post("/api/admin/config/site-seo", siteSeoConfig.value);
-    savedSiteSeo.value = true;
-    setTimeout(() => {
-      savedSiteSeo.value = false;
-    }, 2000);
-  } catch {
-    // 保存失败
-  } finally {
-    savingSiteSeo.value = false;
-  }
-};
 
 // 当前正在轮询的重建类型，null 表示未在轮询
 const pollingType = ref<"music" | "source" | null>(null);
@@ -141,10 +98,7 @@ onMounted(async () => {
   await new Promise((resolve) => setTimeout(resolve, 100));
   if (!isLoggedIn.value) {
     router.push("/admin/login");
-    return;
   }
-  await loadSiteSeoConfig();
-  loading.value = false;
 });
 </script>
 
@@ -253,98 +207,4 @@ onMounted(async () => {
     </UCard>
   </section>
 
-  <!-- 站点 SEO 配置（暂时隐藏） -->
-  <section class="mb-8">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-lg font-medium">SEO 配置</h2>
-      <UButton
-        color="primary"
-        :icon="savedSiteSeo ? 'i-lucide-check' : 'i-lucide-save'"
-        :loading="savingSiteSeo"
-        :disabled="savingSiteSeo || loading"
-        @click="saveSiteSeoConfig"
-      >
-        {{ savedSiteSeo ? "已保存" : "保存" }}
-      </UButton>
-    </div>
-    <UCard>
-      <div class="flex items-center gap-3 mb-6">
-        <div
-          class="w-10 h-10 shrink-0 bg-sky-600 rounded-lg flex items-center justify-center"
-        >
-          <Globe class="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h3 class="font-medium">站点标题与描述</h3>
-          <p class="text-color-500 text-sm">
-            标题用于首页 title，短标题用作内页 title 后缀，描述用于全站默认 meta
-            description；留空使用默认值
-          </p>
-        </div>
-      </div>
-
-      <div class="space-y-4">
-        <div>
-          <label class="block text-muted text-sm mb-2" for="seo-title">
-            SEO 标题
-          </label>
-          <UInput
-            id="seo-title"
-            v-model="siteSeoConfig.site_seo_title"
-            type="text"
-            placeholder="全盘搜 - 免费网盘资源搜索引擎"
-            class="w-full"
-          />
-          <p class="text-color-500 text-xs mt-2">
-            建议不超过 30 个字符，仅在首页生效
-          </p>
-        </div>
-        <div>
-          <label class="block text-muted text-sm mb-2" for="seo-short-title">
-            短标题
-          </label>
-          <UInput
-            id="seo-short-title"
-            v-model="siteSeoConfig.site_seo_short_title"
-            type="text"
-            placeholder="全盘搜"
-            class="w-full"
-          />
-          <p class="text-color-500 text-xs mt-2">
-            建议不超过 10 个字符，用于内页标题后缀（如「歌名 - 短标题」）
-          </p>
-        </div>
-        <div>
-          <label class="block text-muted text-sm mb-2" for="seo-description">
-            SEO 描述
-          </label>
-          <UTextarea
-            id="seo-description"
-            v-model="siteSeoConfig.site_seo_description"
-            :rows="4"
-            placeholder="全盘搜是一个快捷便利的公开网盘搜索引擎，为您提供各类网盘资源的在线搜索、精准筛选服务。"
-            class="w-full"
-          />
-          <p class="text-color-500 text-xs mt-2">
-            建议不超过 120 个字符，页面自身设置了描述时优先使用页面的
-          </p>
-        </div>
-        <div>
-          <label class="block text-muted text-sm mb-2" for="icp-licence">
-            ICP 备案号
-          </label>
-          <UInput
-            id="icp-licence"
-            v-model="siteSeoConfig.site_icp_licence"
-            type="text"
-            placeholder="如：粤ICP备2023000000号"
-            class="w-full"
-          />
-          <p class="text-color-500 text-xs mt-2">
-            建议使用 粤ICP备2023000000号 格式
-          </p>
-        </div>
-      </div>
-    </UCard>
-  </section>
 </template>

@@ -1,21 +1,50 @@
 <script setup lang="ts">
-import {
-  ArrowLeft,
-  BookOpen,
-  Home,
-  LoaderCircle,
-  Megaphone,
-  BadgeJapaneseYen,
-} from "@lucide/vue";
+import { ArrowLeft, Home, LoaderCircle } from "@lucide/vue";
 import SearchBar from "~/components/SearchBar.vue";
 import type { NavigationMenuItem } from "@nuxt/ui";
 import { isMobileOrTablet } from "@/utils";
+import type { PublicLayoutConfig, PublicLayoutLink } from "~/utils/page";
 
 const { icpLicence, siteShortTitle } = await useSiteSeo();
 
 // ---------------- 全局壳（UHeader / UFooter）----------------
 
 const route = useRoute();
+
+/* ---------------- 布局装修配置（后台「页面装修」）---------------- */
+const { data: layoutData } = await useFetch<{ data: PublicLayoutConfig }>(
+  "/api/layout/default",
+  {
+    default: () => ({
+      data: { menuItems: [], footerLinks: [] },
+    }),
+    key: "layout-default",
+    dedupe: "defer",
+  },
+);
+
+const menuLinks = computed<PublicLayoutLink[]>(() => {
+  const list = layoutData.value?.data?.menuItems;
+  return list?.length ? list : [];
+});
+
+const footerLinks = computed<PublicLayoutLink[]>(() => {
+  const list = layoutData.value?.data?.footerLinks;
+  return list?.length ? list : [];
+});
+
+const menuItems = computed<NavigationMenuItem[]>(() =>
+  menuLinks.value.map((item) => {
+    const external = /^https?:\/\//i.test(item.to);
+    return {
+      to: item.to,
+      label: item.label,
+      icon: `i-lucide-${item.icon || "link"}`,
+      target: external ? "_blank" : undefined,
+      active: !external && route.path.startsWith(item.to),
+    };
+  }),
+);
 
 // 是否展示头部搜索框
 const showHeaderSearch = computed(
@@ -33,31 +62,8 @@ const isSearchFocused = computed(
   () => searchBarRef.value?.isInputFocused || false,
 );
 
-const menuItems = computed<NavigationMenuItem[]>(() => [
-  {
-    to: "/announcement",
-    label: "公告列表",
-    icon: Megaphone,
-    active: route.path.startsWith("/announcement"),
-  },
-  {
-    to: "/book",
-    label: "百度小说",
-    icon: BookOpen,
-    active: route.path.startsWith("/book"),
-  },
-]);
-
 // ---------------- 页脚 ----------------
 const year = new Date().getFullYear();
-
-const legalLinks = [
-  { to: "/page/policy", label: "免责声明" },
-  { to: "/page/agree", label: "服务协议" },
-  { to: "/page/privacy-policy", label: "隐私政策" },
-  { to: "/page/version", label: "版权说明" },
-  { to: "/page/forbidden-keywords", label: "屏蔽词列表" },
-];
 
 const extraLinks = [
   {
@@ -218,7 +224,7 @@ const isMobile = isMobileOrTablet();
     <p>&copy; 2015-{{ year }} {{ siteShortTitle }} - 公开网盘资源搜索引擎</p>
 
     <div class="flex items-center justify-center gap-x-2 flex-wrap mt-2">
-      <ULink v-for="item in legalLinks" :key="item.to" :to="item.to">
+      <ULink v-for="item in footerLinks" :key="item.to" :to="item.to">
         {{ item.label }}
       </ULink>
     </div>
@@ -235,7 +241,6 @@ const isMobile = isMobileOrTablet();
       </ULink>
     </div>
   </UFooter>
-  <!-- 二维码是纯客户端功能：ClientOnly 让 SSR 完全跳过渲染与 hydration -->
   <ClientOnly>
     <Qrcode v-if="!isMobile" />
   </ClientOnly>

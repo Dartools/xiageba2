@@ -6,6 +6,7 @@ import {
   countSitemapMusics,
   countSitemapSources,
   fetchMusicUrls,
+  fetchPageUrls,
   fetchSourceUrls,
   parseSitemapName,
   renderUrlset,
@@ -40,10 +41,16 @@ export default defineCachedEventHandler(
     let urls: SitemapUrl[];
 
     if (shard.kind === "static") {
-      urls = STATIC_PAGES.map(({ path, ...rest }) => ({
-        loc: `${origin}${path}`,
-        ...rest,
-      }));
+      const [staticUrls, pageUrls] = await Promise.all([
+        Promise.resolve(
+          STATIC_PAGES.map(({ path, ...rest }) => ({
+            loc: `${origin}${path}`,
+            ...rest,
+          })),
+        ),
+        fetchPageUrls(origin),
+      ]);
+      urls = [...staticUrls, ...pageUrls];
     } else if (shard.kind === "source") {
       assertSitemapPage(shard.page, await countSitemapSources());
       urls = await fetchSourceUrls(origin, shard.page);
