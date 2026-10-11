@@ -1,3 +1,0 @@
-export declare function missingGeneratorMessage(cliCommand: string): string;
-export declare function missingModelMessage(cliCommand: string): string;
-export declare function missingModelMessageMongoDB(cliCommand: string): string;

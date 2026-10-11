@@ -1,2 +1,0 @@
-/** Reject hostnames that directly address local, private, link-local, or reserved networks. */
-export declare function isPublicNetworkHostname(input: string): boolean;

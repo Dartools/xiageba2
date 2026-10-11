@@ -1,2 +1,0 @@
-export * from 'comark/plugins/html';
-export { default } from 'comark/plugins/html';

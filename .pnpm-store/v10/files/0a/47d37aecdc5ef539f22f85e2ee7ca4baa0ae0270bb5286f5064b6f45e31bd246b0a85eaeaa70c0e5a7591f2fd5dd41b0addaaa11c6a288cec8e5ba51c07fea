@@ -1,2 +1,0 @@
-export const MAP_INJECTION_KEY = Symbol("map");
-export const MARKER_INJECTION_KEY = Symbol("marker");

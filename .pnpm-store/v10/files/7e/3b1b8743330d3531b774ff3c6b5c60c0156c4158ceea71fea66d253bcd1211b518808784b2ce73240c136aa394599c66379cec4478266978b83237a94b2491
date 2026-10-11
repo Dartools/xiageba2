@@ -1,2 +1,0 @@
-export * from 'comark/plugins/summary';
-export { default } from 'comark/plugins/summary';

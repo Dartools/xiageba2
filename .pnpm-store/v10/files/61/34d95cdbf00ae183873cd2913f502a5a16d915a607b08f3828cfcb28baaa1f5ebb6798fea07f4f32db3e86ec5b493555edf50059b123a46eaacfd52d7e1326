@@ -1,4 +1,0 @@
-import type { H3Event } from 'h3';
-import type { ModuleOptions, LimitConfiguration } from '../../type.js';
-import type { Storage } from 'nitropack';
-export declare const checkBan: (event: H3Event, shieldStorage: Storage, banKey: string, config: ModuleOptions, requestIP?: string, url?: string, routeLimit?: LimitConfiguration) => Promise<boolean | "banned">;

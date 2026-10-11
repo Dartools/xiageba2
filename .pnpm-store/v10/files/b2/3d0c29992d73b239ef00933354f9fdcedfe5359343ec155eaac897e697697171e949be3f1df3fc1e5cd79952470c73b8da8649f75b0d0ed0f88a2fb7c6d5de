@@ -1,3 +1,0 @@
-export function isUnheadSourceLessScriptLoaderEnabled() {
-  return typeof __NUXT_SCRIPTS_UNHEAD_SOURCELESS__ !== "undefined" && __NUXT_SCRIPTS_UNHEAD_SOURCELESS__;
-}

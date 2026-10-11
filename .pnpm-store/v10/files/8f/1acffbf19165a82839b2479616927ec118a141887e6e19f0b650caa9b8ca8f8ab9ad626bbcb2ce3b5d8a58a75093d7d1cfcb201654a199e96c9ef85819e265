@@ -1,7 +1,0 @@
-/**
- * Create a trigger that loads a script after the service worker is controlling the page.
- * Falls back to immediate loading if service workers are not supported or after timeout.
- */
-export declare function useScriptTriggerServiceWorker(options?: {
-    timeout?: number;
-}): Promise<boolean>;

@@ -1,7 +1,0 @@
-import type { ComarkSpanOptions, ComarkTracer } from '../types.ts';
-/** No-op recorder used when no `tracer` option is provided — zero overhead. */
-export declare const noopTracer: ComarkTracer;
-/**
- * Run `fn` inside an active span on `tracer`; always ends the span (incl. async).
- */
-export declare function withSpan<T>(tracer: ComarkTracer, name: string, fn: () => T, options?: ComarkSpanOptions): T;

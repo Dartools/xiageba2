@@ -1,8 +1,0 @@
-import type { State } from 'comark/render';
-import type { ElementNode } from 'comark';
-export declare function table(node: ElementNode, state: State): Promise<string>;
-export declare function thead(_node: ElementNode, _state: State): string;
-export declare function tbody(_node: ElementNode, _state: State): string;
-export declare function tr(_node: ElementNode, _state: State): string;
-export declare function th(_node: ElementNode, _state: State): string;
-export declare function td(_node: ElementNode, _state: State): string;

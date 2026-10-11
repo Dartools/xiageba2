@@ -1,5 +1,0 @@
-export const SIG_PARAM = "sig";
-export const SIG_LENGTH = 16;
-export const PAGE_TOKEN_PARAM = "_pt";
-export const PAGE_TOKEN_TS_PARAM = "_ts";
-export const PAGE_TOKEN_MAX_AGE = 3600;

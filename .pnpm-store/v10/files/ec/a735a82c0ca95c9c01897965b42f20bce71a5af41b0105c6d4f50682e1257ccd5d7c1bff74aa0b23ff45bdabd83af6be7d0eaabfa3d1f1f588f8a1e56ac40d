@@ -1,8 +1,0 @@
-/**
- * Custom task list plugin for markdown-it that integrates with Comark components.
- *
- * This plugin runs before inline parsing to prevent components from interpreting
- * task list markers [X] and [ ] as Comark inline span syntax.
- */
-declare const _default: import("../types.ts").ComarkPluginFactory<unknown, {}, {}>;
-export default _default;

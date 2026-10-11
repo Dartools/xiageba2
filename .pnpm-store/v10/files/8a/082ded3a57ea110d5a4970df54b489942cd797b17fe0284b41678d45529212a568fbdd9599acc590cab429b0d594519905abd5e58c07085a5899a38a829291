@@ -1,6 +1,0 @@
-/**
- * Checks if a stored ban timestamp is in the past.
- * @param bannedUntilRaw The raw value retrieved from storage, expected to be a timestamp.
- * @returns True if the ban is expired or data is malformed, false otherwise.
- */
-export declare const isActualBanTimestampExpired: (bannedUntilRaw: unknown) => boolean;

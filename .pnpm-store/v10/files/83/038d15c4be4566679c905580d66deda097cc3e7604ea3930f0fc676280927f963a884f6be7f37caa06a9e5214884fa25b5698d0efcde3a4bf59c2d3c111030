@@ -1,5 +1,0 @@
-import type { RegistryScriptInput } from '#nuxt-scripts/types';
-import { NpmOptions } from './schemas.js';
-export { NpmOptions };
-export type NpmInput = RegistryScriptInput<typeof NpmOptions, true, true>;
-export declare function useScriptNpm<T extends Record<string | symbol, any>>(_options: NpmInput): import("#nuxt-scripts/types").UseScriptContext<T>;

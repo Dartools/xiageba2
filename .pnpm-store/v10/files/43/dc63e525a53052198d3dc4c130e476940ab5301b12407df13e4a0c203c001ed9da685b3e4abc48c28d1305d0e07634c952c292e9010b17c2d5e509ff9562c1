@@ -1,2 +1,0 @@
-import type { StateBlock } from 'markdown-exit';
-export default function html_block(state: StateBlock, startLine: number, endLine: number, silent: boolean): boolean;

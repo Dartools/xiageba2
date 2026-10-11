@@ -1,8 +1,0 @@
-export function bindGoogleMapsEvents(instance, emit, config) {
-  config.noPayload?.forEach((event) => {
-    instance.addListener(event, () => emit(event));
-  });
-  config.withPayload?.forEach((event) => {
-    instance.addListener(event, (payload) => emit(event, payload));
-  });
-}

@@ -1,3 +1,0 @@
-import type { State } from 'comark/render';
-import type { ElementNode } from 'comark';
-export declare function math(node: ElementNode, state: State, parent?: ElementNode): string;

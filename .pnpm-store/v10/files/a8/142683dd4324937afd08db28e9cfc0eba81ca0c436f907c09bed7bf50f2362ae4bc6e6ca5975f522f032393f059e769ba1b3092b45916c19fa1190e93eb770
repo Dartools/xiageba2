@@ -1,3 +1,0 @@
-import type { State } from 'comark/render';
-import type { ElementNode } from 'comark';
-export declare function br(_: ElementNode, _state: State): string;

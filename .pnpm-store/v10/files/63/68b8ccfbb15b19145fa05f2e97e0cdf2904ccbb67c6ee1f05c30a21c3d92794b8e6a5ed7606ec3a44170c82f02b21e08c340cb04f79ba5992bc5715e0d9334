@@ -1,6 +1,0 @@
-import type { RateLimit } from '../types/RateLimit.js';
-import type { LogEntry } from '../types/LogEntry.js';
-import type { LimitConfiguration } from '../../type.js';
-declare const shieldLog: (req: RateLimit, requestIP: string, url: string, logConfig?: LogEntry) => Promise<void>;
-export declare const shieldLogBan: (requestIP: string, url: string, limit: LimitConfiguration, logConfig?: LogEntry) => Promise<void>;
-export default shieldLog;

@@ -1,4 +1,0 @@
-import { textContent } from "../../../utils/index.js";
-export function del(node, _) {
-    return `~~${textContent(node)}~~`;
-}

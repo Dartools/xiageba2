@@ -1,5 +1,0 @@
-export const createNetworkDispatcher = async () => ({
-  fetch: globalThis.fetch,
-  close: async () => {
-  }
-});

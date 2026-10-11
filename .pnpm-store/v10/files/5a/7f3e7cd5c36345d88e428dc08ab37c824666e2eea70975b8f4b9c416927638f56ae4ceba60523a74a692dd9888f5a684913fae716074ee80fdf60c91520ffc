@@ -1,9 +1,0 @@
-/**
- * Build a proxy URL with query params, signing it when a secret is available.
- *
- * Used by embed handlers that inject proxy URLs into HTML/JSON responses.
- * When `secret` is set, URLs are HMAC-signed so clients can fetch them without
- * needing a page token. When it's undefined, URLs fall back to unsigned form
- * (which is only safe when the `withSigning` middleware has no secret either).
- */
-export declare function buildProxyUrl(path: string, query: Record<string, unknown>, secret?: string): string;

@@ -1,9 +1,0 @@
-/**
- * Parse `component-name [content] {.params}` from the trailing portion of a block fence line.
- */
-export declare function parseBlockParams(str: string): {
-    name: string;
-    content?: string;
-    props?: [string, string][];
-    remaining?: string;
-};

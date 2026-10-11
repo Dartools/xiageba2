@@ -1,5 +1,0 @@
-export declare function parseProps(content: string): [string, string][] | undefined;
-export declare function searchProps(content: string, index?: number): {
-    props: [string, string][];
-    index: number;
-} | undefined;

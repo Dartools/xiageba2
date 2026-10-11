@@ -1,2 +1,0 @@
-export * from 'comark/plugins/rangi';
-export { default } from 'comark/plugins/rangi';

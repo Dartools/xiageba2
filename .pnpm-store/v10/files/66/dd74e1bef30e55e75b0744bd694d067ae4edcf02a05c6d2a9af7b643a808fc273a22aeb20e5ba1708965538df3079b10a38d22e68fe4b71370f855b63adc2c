@@ -1,5 +1,0 @@
-import type { H3Event } from 'h3';
-import type { ModuleOptions, LimitConfiguration } from '../../type.js';
-import type { Storage } from 'nitropack';
-export declare const setRateLimitHeaders: (event: H3Event, limit: number, remaining: number, reset: number) => void;
-export declare const handleRateLimit: (event: H3Event, shieldStorage: Storage, ipKey: string, banKey: string, requestIP: string, url: string, routeLimit: LimitConfiguration, config: ModuleOptions) => Promise<void>;

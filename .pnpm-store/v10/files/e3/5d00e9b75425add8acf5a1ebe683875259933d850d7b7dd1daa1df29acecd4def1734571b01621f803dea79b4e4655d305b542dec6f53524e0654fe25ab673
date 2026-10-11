@@ -1,7 +1,0 @@
-type ScriptApi = Record<string | symbol, any>;
-/**
- * Keeps Unhead's recording proxy while an SDK loads, then forwards calls to
- * the resolved SDK without discarding their return values.
- */
-export declare function createNpmScriptProxy<T extends ScriptApi>(fallback: T, getApi: () => T | undefined): T;
-export {};

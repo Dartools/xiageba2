@@ -1,2 +1,0 @@
-import type { CreateNetworkDispatcher } from './network-host.js';
-export declare const createNetworkDispatcher: CreateNetworkDispatcher;

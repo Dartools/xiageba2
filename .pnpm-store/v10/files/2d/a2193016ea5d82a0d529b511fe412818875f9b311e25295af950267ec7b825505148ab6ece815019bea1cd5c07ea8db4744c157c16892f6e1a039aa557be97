@@ -1,8 +1,0 @@
-import { comarkAttributes } from "../attributes.js";
-const fence = '```';
-export function mermaid(node, state) {
-    const [_, attributes] = node;
-    const { content, ...rest } = attributes;
-    const attrs = comarkAttributes(rest);
-    return `${fence}mermaid${attrs ? ` ${attrs}` : ''}\n${content}\n${fence}${state.context.blockSeparator}`;
-}
