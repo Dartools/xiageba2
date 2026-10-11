@@ -1,0 +1,8 @@
+import type { VNode } from 'vue';
+export declare const TEXT_TAGS: string[];
+export declare function isTag(vnode: VNode, tag: string | symbol): boolean;
+export declare function isText(vnode: VNode): boolean;
+export declare function nodeChildren(node: VNode): any;
+export declare function nodeTextContent(node: VNode): string;
+export declare function unwrap(vnode: VNode, tags?: string[]): VNode | VNode[];
+export declare function flatUnwrap(vnodes: VNode | VNode[], tags?: string | string[]): Array<VNode | string> | VNode;

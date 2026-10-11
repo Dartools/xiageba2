@@ -1,0 +1,97 @@
+import { ProxyPrivacyInput } from '../dist/runtime/server/utils/privacy.js';
+import { ScriptCapabilities, RegistryScript, RegistryScriptKey, ProxyConfig, ProxyCapability, ProxyAutoInject, ResolvedProxyAutoInject } from '../dist/runtime/types.js';
+export { ScriptCapabilities } from '../dist/runtime/types.js';
+
+interface RegistryScriptMeta {
+    /** Registry key (e.g. 'plausibleAnalytics') */
+    key: string;
+    /** Human-readable label */
+    label: string;
+    /** Category slug */
+    category: string;
+    /** Composable function name, or false for component-only scripts */
+    composableName: string | false;
+    /** What first-party capabilities the script supports */
+    capabilities: ScriptCapabilities;
+    /** Privacy preset applied when proxy is active, null if no proxy */
+    privacy: ProxyPrivacyInput | null;
+}
+interface PrivacyDescription {
+    label: string;
+    description: string;
+}
+declare const PRIVACY_NONE: ProxyPrivacyInput;
+declare const PRIVACY_FULL: ProxyPrivacyInput;
+declare const PRIVACY_HEATMAP: ProxyPrivacyInput;
+declare const PRIVACY_IP_ONLY: ProxyPrivacyInput;
+declare const PRIVACY_DESCRIPTIONS: Record<string, PrivacyDescription>;
+/** Resolve a privacy preset to a human-readable label + description. */
+declare function getPrivacyDescription(privacy: ProxyPrivacyInput | null | undefined): PrivacyDescription | null;
+/** Static registry metadata for all scripts. Importable without async resolution. */
+declare const registryMeta: RegistryScriptMeta[];
+declare const REGISTRY_CATEGORIES: readonly [{
+    readonly key: "analytics";
+    readonly label: "Analytics";
+}, {
+    readonly key: "ad";
+    readonly label: "Advertising";
+}, {
+    readonly key: "tag-manager";
+    readonly label: "Tag Manager";
+}, {
+    readonly key: "video";
+    readonly label: "Video";
+}, {
+    readonly key: "content";
+    readonly label: "Content";
+}, {
+    readonly key: "support";
+    readonly label: "Support";
+}, {
+    readonly key: "cdn";
+    readonly label: "CDN";
+}, {
+    readonly key: "utility";
+    readonly label: "Utility";
+}, {
+    readonly key: "payments";
+    readonly label: "Payments";
+}];
+/** Get the resolved proxy definition, following aliases. */
+declare function getProxyDef(script: RegistryScript, scriptByKey?: Map<string, RegistryScript>): ProxyCapability | undefined;
+/** Resolve ProxyAutoInject shorthand into the full { configField, computeValue } form. */
+declare function resolveAutoInject(ai: ProxyAutoInject): ResolvedProxyAutoInject;
+/** Get the bundle resolve function, if any. */
+declare function getBundleResolve(script: RegistryScript): ((options?: any) => string | false) | undefined;
+/** Get partytown forwards, if any. */
+declare function getPartytownForwards(script: RegistryScript): string[] | undefined;
+/** Derive ScriptCapabilities from the new nested structure. */
+declare function getCapabilities(script: RegistryScript): ScriptCapabilities;
+declare function registry(resolve?: (path: string) => Promise<string>): Promise<RegistryScript[]>;
+/**
+ * Generate a Partytown `resolveUrl` function string for proxy routing.
+ * Partytown calls this for every network request made by worker-executed scripts.
+ * Any non-same-origin URL is proxied through `proxyPrefix/<host-or-alias><path>`.
+ *
+ * `domainAliases` (real domain → path alias) is embedded so worker requests use the
+ * same opaque path segment as build-time rewrites, keeping hostnames out of URLs.
+ */
+declare function generatePartytownResolveUrl(proxyPrefix: string, domainAliases?: Record<string, string>): string;
+/**
+ * Resolve the effective capabilities for a script by merging:
+ * 1. Derive ceiling from script's bundle/proxy/partytown keys
+ * 2. Default = ceiling minus partytown (user must opt-in)
+ * 3. Apply user overrides from scriptOptions
+ * 4. Clamp to ceiling (user can't enable unsupported capabilities)
+ * 5. Warn in dev if user tries to exceed ceiling
+ */
+declare function resolveCapabilities(script: RegistryScript, scriptOptions?: Record<string, any>): ScriptCapabilities;
+/**
+ * Build proxy configs from registry scripts.
+ * Each script with proxy capability gets a proxy config.
+ * Scripts with a string proxy alias inherit from the referenced script.
+ */
+declare function buildProxyConfigsFromRegistry(scripts: RegistryScript[], scriptByKey?: Map<string, RegistryScript>): Partial<Record<RegistryScriptKey, ProxyConfig>>;
+
+export { PRIVACY_DESCRIPTIONS, PRIVACY_FULL, PRIVACY_HEATMAP, PRIVACY_IP_ONLY, PRIVACY_NONE, REGISTRY_CATEGORIES, buildProxyConfigsFromRegistry, generatePartytownResolveUrl, getBundleResolve, getCapabilities, getPartytownForwards, getPrivacyDescription, getProxyDef, registry, registryMeta, resolveAutoInject, resolveCapabilities };
+export type { PrivacyDescription, RegistryScriptMeta };

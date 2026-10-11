@@ -1,0 +1,163 @@
+import type { HTMLAttributes, ReservedProps, ShallowRef } from 'vue';
+import type { ElementScriptTrigger } from '#nuxt-scripts/types';
+export { MAP_INJECTION_KEY } from './useGoogleMapsResource.js';
+export interface ScriptGoogleMapsProps {
+    /**
+     * Defines the trigger event to load the script.
+     * @default ['mouseenter', 'mouseover', 'mousedown']
+     */
+    trigger?: ElementScriptTrigger;
+    /**
+     * Defines the Google Maps API key. Must have access to the Static Maps API as well.
+     */
+    apiKey?: string;
+    /**
+     * A latitude / longitude of where to focus the map.
+     *
+     * @deprecated Pass `center` via `mapOptions` instead. The top-level `center`
+     * prop will be removed in a future major version. When both are set,
+     * `mapOptions.center` wins.
+     * @see https://scripts.nuxt.com/docs/migration-guide/v0-to-v1
+     */
+    center?: google.maps.LatLng | google.maps.LatLngLiteral | `${string},${string}`;
+    /**
+     * Zoom level for the map (0-21). Reactive: changing this will update the map.
+     *
+     * @deprecated Pass `zoom` via `mapOptions` instead. The top-level `zoom`
+     * prop will be removed in a future major version. When both are set,
+     * `mapOptions.zoom` wins.
+     * @see https://scripts.nuxt.com/docs/migration-guide/v0-to-v1
+     */
+    zoom?: number;
+    /**
+     * Options for the map.
+     */
+    mapOptions?: google.maps.MapOptions;
+    /**
+     * Defines the region of the map.
+     */
+    region?: string;
+    /**
+     * Defines the language of the map.
+     */
+    language?: string;
+    /**
+     * Defines the version of google maps js API.
+     */
+    version?: string;
+    /**
+     * Defines the width of the map.
+     * @default 640
+     */
+    width?: number | string;
+    /**
+     * Defines the height of the map.
+     * @default 400
+     */
+    height?: number | string;
+    /**
+     * Customize the root element attributes.
+     */
+    rootAttrs?: HTMLAttributes & ReservedProps & Record<string, unknown>;
+    /**
+     * Map IDs for light and dark color modes.
+     * When provided, the map will automatically switch styles based on color mode.
+     * Requires @nuxtjs/color-mode or manual colorMode prop.
+     */
+    mapIds?: {
+        light?: string;
+        dark?: string;
+    };
+    /**
+     * Manual color mode control. When provided, overrides auto-detection from @nuxtjs/color-mode.
+     * Accepts 'light' or 'dark'.
+     */
+    colorMode?: 'light' | 'dark';
+}
+export interface ScriptGoogleMapsExpose {
+    /**
+     * A reference to the loaded Google Maps API namespace (`google.maps`), or
+     * `undefined` if not yet loaded.
+     */
+    mapsApi: ShallowRef<typeof google.maps | undefined>;
+    /**
+     * A reference to the loaded Google Maps API namespace, or `undefined` if not
+     * yet loaded.
+     *
+     * @deprecated Use `mapsApi` instead. The `googleMaps` alias will be removed
+     * in a future major version.
+     * @see https://scripts.nuxt.com/docs/migration-guide/v0-to-v1
+     */
+    googleMaps: ShallowRef<typeof google.maps | undefined>;
+    /**
+     * A reference to the Google Map instance, or `undefined` if not yet initialized.
+     */
+    map: ShallowRef<google.maps.Map | undefined>;
+    /**
+     * Utility function to resolve a location query (e.g. "New York, NY") to latitude/longitude coordinates.
+     * Uses a caching mechanism and a server-side proxy to avoid unnecessary client-side API calls.
+     */
+    resolveQueryToLatLng: (query: string) => Promise<google.maps.LatLng | google.maps.LatLngLiteral | undefined>;
+    /**
+     * Utility function to dynamically import additional Google Maps libraries (e.g. "marker", "places").
+     * Caches imported libraries for efficient reuse.
+     */
+    importLibrary: {
+        (key: 'marker'): Promise<google.maps.MarkerLibrary>;
+        (key: 'places'): Promise<google.maps.PlacesLibrary>;
+        (key: 'geometry'): Promise<google.maps.GeometryLibrary>;
+        (key: 'drawing'): Promise<google.maps.DrawingLibrary>;
+        (key: 'visualization'): Promise<google.maps.VisualizationLibrary>;
+        (key: string): Promise<any>;
+    };
+}
+export interface ScriptGoogleMapsEmits {
+    /**
+     * Fired when the Google Maps instance is fully loaded and ready to use. Provides access to the maps API.
+     */
+    ready: [payload: ScriptGoogleMapsExpose];
+    /**
+     * Fired when the Google Maps script fails to load.
+     */
+    error: [];
+}
+export interface ScriptGoogleMapsSlots {
+    /**
+     * Default slot for rendering child components (e.g. markers, info windows) that depend on the map being ready.
+     */
+    default?: () => any;
+    /**
+     * Slot displayed while the map is loading. Can be used to show a custom loading indicator.
+     */
+    loading?: () => any;
+    /**
+     * Slot displayed when the script is awaiting user interaction to load (based on the `trigger` prop).
+     */
+    awaitingLoad?: () => any;
+    /**
+     * Slot displayed if the script fails to load.
+     */
+    error?: () => any;
+    /**
+     * Slot displayed as a placeholder before the map is ready. Useful for showing a static map or skeleton.
+     */
+    placeholder?: () => any;
+}
+declare const _default: typeof __VLS_export;
+export default _default;
+declare const __VLS_export: __VLS_WithSlots<import("vue").DefineComponent<ScriptGoogleMapsProps, ScriptGoogleMapsExpose, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
+    error: () => any;
+    ready: (payload: ScriptGoogleMapsExpose) => any;
+}, string, import("vue").PublicProps, Readonly<ScriptGoogleMapsProps> & Readonly<{
+    onError?: (() => any) | undefined;
+    onReady?: ((payload: ScriptGoogleMapsExpose) => any) | undefined;
+}>, {
+    trigger: ElementScriptTrigger;
+    width: number | string;
+    height: number | string;
+}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>, ScriptGoogleMapsSlots>;
+type __VLS_WithSlots<T, S> = T & {
+    new (): {
+        $slots: S;
+    };
+};

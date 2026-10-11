@@ -1,0 +1,48 @@
+<script setup>
+import { computed, onMounted, ref, useAttrs } from "vue";
+import { useScriptGravatar } from "../registry/gravatar";
+const props = defineProps({
+  email: { type: String, required: false },
+  hash: { type: String, required: false },
+  size: { type: Number, required: false, default: 80 },
+  default: { type: String, required: false, default: "mp" },
+  rating: { type: String, required: false, default: "g" },
+  hovercards: { type: Boolean, required: false, default: false }
+});
+const attrs = useAttrs();
+const imgSrc = ref("");
+const { onLoaded } = useScriptGravatar();
+const queryOverrides = computed(() => ({
+  size: props.size,
+  default: props.default,
+  rating: props.rating
+}));
+onMounted(() => {
+  onLoaded((api) => {
+    if (props.email) {
+      imgSrc.value = api.getAvatarUrlFromEmail(props.email, queryOverrides.value);
+    } else if (props.hash) {
+      imgSrc.value = api.getAvatarUrl(props.hash, queryOverrides.value);
+    }
+  });
+});
+</script>
+
+<template>
+  <img
+    v-if="imgSrc"
+    :src="imgSrc"
+    :width="size"
+    :height="size"
+    :class="{ hovercard: hovercards }"
+    v-bind="attrs"
+    :alt="attrs.alt || 'Gravatar avatar'"
+    loading="lazy"
+  >
+  <span
+    v-else
+    role="status"
+    aria-label="Loading avatar"
+    :style="{ display: 'inline-block', width: `${size}px`, height: `${size}px`, borderRadius: '50%', background: '#e0e0e0' }"
+  />
+</template>

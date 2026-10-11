@@ -1,0 +1,11 @@
+import type { ModuleHooks } from './module.mjs'
+
+declare module '@nuxt/schema' {
+  interface NuxtHooks extends ModuleHooks {}
+}
+
+export { type FirstPartyPrivacy } from '../dist/runtime/types.js'
+
+export { type STATIC_PROXY_PRESETS, type applyAutoInject, default, type findMissingRequiredFields, type isProxyDisabled, type isStaticProxyTarget, type normalizeNitroPreset, type resolveConfiguredProxyDomains, type resolveProxySecret } from './module.mjs'
+
+export { type ModuleHooks, type ModuleOptions, type ResolvedProxySecret } from './module.mjs'

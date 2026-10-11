@@ -1,0 +1,14 @@
+import { type DumpOptions } from 'js-yaml';
+/**
+ * Parse YAML content.
+ *
+ * @param content - The content to parse
+ * @returns The parsed data, or `undefined` when the content has no YAML document
+ */
+export declare function parseYaml(content: string): Record<string, unknown> | undefined;
+/**
+ * Stringify YAML data
+ * @param data - The data to stringify
+ * @returns The stringified data
+ */
+export declare function stringifyYaml(data: Record<string, unknown>, options?: DumpOptions): string;

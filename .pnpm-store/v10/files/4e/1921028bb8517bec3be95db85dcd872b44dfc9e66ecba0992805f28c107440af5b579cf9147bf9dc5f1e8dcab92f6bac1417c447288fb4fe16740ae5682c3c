@@ -1,0 +1,7 @@
+import type { Node } from 'comark';
+declare const _default: import("comark").ComarkPluginFactory<{
+    delimiter?: string;
+}, {
+    summary: Node[];
+}, {}>;
+export default _default;

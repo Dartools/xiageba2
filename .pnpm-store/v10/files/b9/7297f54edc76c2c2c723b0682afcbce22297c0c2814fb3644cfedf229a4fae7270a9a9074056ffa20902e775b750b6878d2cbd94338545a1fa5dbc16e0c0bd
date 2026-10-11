@@ -1,0 +1,47 @@
+"use strict";
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+var completion_values_exports = {};
+__export(completion_values_exports, {
+  completionApiKeyHint: () => import_chunk_QMNPESAP.completionApiKeyHint,
+  completionClientOutputPaths: () => import_chunk_QMNPESAP.completionClientOutputPaths,
+  completionCompositeTypeDepths: () => import_chunk_QMNPESAP.completionCompositeTypeDepths,
+  completionConfigPaths: () => import_chunk_QMNPESAP.completionConfigPaths,
+  completionDatabaseIdHint: () => import_chunk_QMNPESAP.completionDatabaseIdHint,
+  completionDatabaseSchemas: () => import_chunk_QMNPESAP.completionDatabaseSchemas,
+  completionDatasourceProviders: () => import_chunk_QMNPESAP.completionDatasourceProviders,
+  completionDatasourceUrls: () => import_chunk_QMNPESAP.completionDatasourceUrls,
+  completionDevDbPorts: () => import_chunk_QMNPESAP.completionDevDbPorts,
+  completionDevHttpPorts: () => import_chunk_QMNPESAP.completionDevHttpPorts,
+  completionDevServerNames: () => import_chunk_QMNPESAP.completionDevServerNames,
+  completionDevShadowDbPorts: () => import_chunk_QMNPESAP.completionDevShadowDbPorts,
+  completionDiffOutputPaths: () => import_chunk_QMNPESAP.completionDiffOutputPaths,
+  completionGeneratorNames: () => import_chunk_QMNPESAP.completionGeneratorNames,
+  completionGeneratorProviders: () => import_chunk_QMNPESAP.completionGeneratorProviders,
+  completionMigrationIds: () => import_chunk_QMNPESAP.completionMigrationIds,
+  completionMigrationNames: () => import_chunk_QMNPESAP.completionMigrationNames,
+  completionMigrationsDirPaths: () => import_chunk_QMNPESAP.completionMigrationsDirPaths,
+  completionPreviewFeatures: () => import_chunk_QMNPESAP.completionPreviewFeatures,
+  completionSchemaPaths: () => import_chunk_QMNPESAP.completionSchemaPaths,
+  completionSqlScriptPaths: () => import_chunk_QMNPESAP.completionSqlScriptPaths,
+  completionStudioBrowsers: () => import_chunk_QMNPESAP.completionStudioBrowsers,
+  completionStudioPorts: () => import_chunk_QMNPESAP.completionStudioPorts
+});
+module.exports = __toCommonJS(completion_values_exports);
+var import_chunk_QMNPESAP = require("../chunk-QMNPESAP.js");
+var import_chunk_4VNS5WPM = require("../chunk-4VNS5WPM.js");

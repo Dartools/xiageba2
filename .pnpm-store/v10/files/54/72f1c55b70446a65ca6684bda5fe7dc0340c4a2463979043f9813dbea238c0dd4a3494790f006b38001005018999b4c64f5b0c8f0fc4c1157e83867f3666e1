@@ -1,0 +1,43 @@
+import { useRegistryScript } from "../utils.js";
+import { BingUetOptions } from "./schemas.js";
+export { BingUetOptions };
+export function useScriptBingUet(_options) {
+  const instance = useRegistryScript("bingUet", (options) => ({
+    scriptInput: {
+      src: "https://bat.bing.com/bat.js",
+      crossorigin: false
+    },
+    schema: import.meta.dev ? BingUetOptions : void 0,
+    scriptOptions: {
+      use() {
+        if (options?.id && typeof window.UET === "function" && Array.isArray(window.uetq)) {
+          const uetOptions = {
+            ti: options.id,
+            enableAutoSpaTracking: options.enableAutoSpaTracking ?? true,
+            q: window.uetq
+          };
+          window.uetq = new window.UET(uetOptions);
+          window.uetq.push("pageLoad");
+        }
+        return { uetq: window.uetq };
+      }
+    },
+    clientInit: import.meta.server ? void 0 : () => {
+      const uetq = window.uetq || [];
+      window.uetq = uetq;
+      if (options?.defaultConsent) {
+        uetq.push("consent", "default", options.defaultConsent);
+      }
+      _options?.onBeforeUetStart?.(uetq);
+    }
+  }), _options);
+  if (import.meta.client && !instance.consent) {
+    instance.consent = {
+      update: (state) => {
+        ;
+        instance.proxy.uetq.push("consent", "update", state);
+      }
+    };
+  }
+  return instance;
+}

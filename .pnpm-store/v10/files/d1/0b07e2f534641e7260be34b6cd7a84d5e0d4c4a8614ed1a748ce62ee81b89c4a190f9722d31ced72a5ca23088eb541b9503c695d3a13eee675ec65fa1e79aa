@@ -1,0 +1,7 @@
+import { InstagramEmbedOptions } from "./schemas.js";
+export { InstagramEmbedOptions };
+const INSTAGRAM_SHORTCODE_RE = /instagram\.com\/(?:p|reel|tv)\/([^/?]+)/;
+export function extractInstagramShortcode(url) {
+  const match = url.match(INSTAGRAM_SHORTCODE_RE);
+  return match?.[1];
+}

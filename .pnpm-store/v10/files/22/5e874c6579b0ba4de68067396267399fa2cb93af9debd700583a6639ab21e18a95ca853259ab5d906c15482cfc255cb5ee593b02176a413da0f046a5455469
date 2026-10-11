@@ -1,0 +1,78 @@
+{
+  "name": "@teages/nuxt-legacy",
+  "type": "module",
+  "version": "3.0.1",
+  "description": "A Nuxt module for supporting legacy browsers.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Teages/nuxt-legacy.git"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types.d.mts",
+      "import": "./dist/module.mjs"
+    }
+  },
+  "main": "./dist/module.mjs",
+  "typesVersions": {
+    "*": {
+      ".": [
+        "./dist/types.d.mts"
+      ]
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "@vitejs/plugin-legacy": "^8.0.0",
+    "nuxt": ">=4.5.0"
+  },
+  "peerDependenciesMeta": {
+    "@vitejs/plugin-legacy": {
+      "optional": true
+    }
+  },
+  "dependencies": {
+    "@nuxt/kit": "^4.5.0",
+    "browserslist": "^4.28.6"
+  },
+  "devDependencies": {
+    "@antfu/eslint-config": "^9.0.0",
+    "@nuxt/devtools": "3.2.4",
+    "@nuxt/eslint-config": "^1.16.0",
+    "@nuxt/module-builder": "^1.0.2",
+    "@nuxt/schema": "^4.5.0",
+    "@nuxt/test-utils": "^4.0.3",
+    "@types/node": "^24.13.2",
+    "@types/selenium-webdriver": "^4.35.6",
+    "@vitejs/plugin-legacy": "^8.0.0",
+    "browserstack-local": "^1.5.13",
+    "eslint": "^10.5.0",
+    "get-port-please": "^3.2.0",
+    "node-html-parser": "^7.1.0",
+    "nuxt": "^4.5.0",
+    "plugin-legacy-v7": "npm:@vitejs/plugin-legacy@^7.0.0",
+    "plugin-legacy-v8": "npm:@vitejs/plugin-legacy@^8.0.0",
+    "selenium-webdriver": "^4.45.0",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.9",
+    "vue-tsc": "^3.3.5"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "scripts": {
+    "dev": "pnpm -C playgrounds/v4 dev",
+    "dev:build": "pnpm -C playgrounds/v4 build",
+    "dev:prepare": "nuxt-module-build build --stub && nuxt-module-build prepare && pnpm --filter \"./playgrounds/*\" dev:prepare",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --project unit",
+    "test:watch": "vitest watch --project unit",
+    "test:e2e": "vitest run --project e2e",
+    "test:types": "vue-tsc --noEmit && pnpm --filter \"./playgrounds/*\" exec vue-tsc --noEmit"
+  }
+}

@@ -1,0 +1,18 @@
+/**
+ * Auto-closes unclosed markdown and Comark component syntax
+ * Useful for streaming/incremental parsing where content may be partial
+ */
+/**
+ * Linear-time auto-close implementation without regex
+ * Processes markdown in O(n) time by scanning character-by-character
+ *
+ * @param markdown - The markdown content to auto-close
+ * @param options - `frontmatter` completes an unclosed leading frontmatter block.
+ *   `syntax: false` disables Comark component-fence handling (`::` closers and
+ *   props braces), for input parsed without the components plugin.
+ * @returns The markdown with unclosed syntax closed
+ */
+export declare function autoCloseMarkdown(markdown: string, options?: {
+    frontmatter?: boolean;
+    syntax?: boolean;
+}): string;

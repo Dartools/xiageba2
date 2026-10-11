@@ -1,0 +1,443 @@
+import { createError, defineEventHandler, getHeaders, getQuery, getRequestIP, getRequestWebStream, sendStream, setResponseHeader, setResponseStatus } from "#nuxt-scripts/h3";
+import { useNitroApp, useRuntimeConfig } from "#nuxt-scripts/nitro";
+import { matchDomain } from "./utils/match-domain.js";
+import { closePublicNetworkDispatcher, createPublicNetworkDispatcher, isPrivateNetworkResolutionError, isPublicNetworkHostname } from "./utils/network-host.js";
+import {
+  anonymizeIP,
+  mergePrivacy,
+  normalizeLanguage,
+  normalizeUserAgent,
+  resolvePrivacy,
+  SENSITIVE_HEADERS,
+  stripPayloadFingerprinting
+} from "./utils/privacy.js";
+const COMPRESSION_RE = /gzip|deflate|br|compress|base64/i;
+const CLIENT_HINT_VERSION_RE = /;v="(\d+)\.[^"]*"/g;
+const MAX_TRANSFORM_BODY_SIZE = 2 * 1024 * 1024;
+const UPSTREAM_TIMEOUT_MS = 15e3;
+const SKIP_RESPONSE_HEADERS = /* @__PURE__ */ new Set([
+  "alt-svc",
+  "clear-site-data",
+  "connection",
+  "content-encoding",
+  "content-length",
+  "keep-alive",
+  "nel",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "report-to",
+  "reporting-endpoints",
+  "set-cookie",
+  "set-cookie2",
+  "strict-transport-security",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade",
+  "www-authenticate"
+]);
+export const SKIP_REQUEST_HEADERS = /* @__PURE__ */ new Set([
+  "connection",
+  "keep-alive",
+  "proxy-authenticate",
+  "proxy-authorization",
+  "te",
+  "trailer",
+  "transfer-encoding",
+  "upgrade"
+]);
+async function readTransformBody(event) {
+  const contentLength = Number(getHeaders(event)["content-length"] || 0);
+  if (Number.isFinite(contentLength) && contentLength > MAX_TRANSFORM_BODY_SIZE) {
+    throw createError({ statusCode: 413, statusMessage: "Proxy request body too large" });
+  }
+  const stream = getRequestWebStream(event);
+  if (!stream)
+    return void 0;
+  const reader = stream.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done)
+        break;
+      if (!value)
+        continue;
+      total += value.byteLength;
+      if (total > MAX_TRANSFORM_BODY_SIZE) {
+        try {
+          await reader.cancel("Proxy request body too large");
+        } catch {
+        }
+        throw createError({ statusCode: 413, statusMessage: "Proxy request body too large" });
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const body = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(body);
+}
+export function withResponseBodyIdleTimeout(body, timeoutMs, onTimeout) {
+  const reader = body.getReader();
+  let stopped = false;
+  let timeoutId;
+  const clearIdleTimeout = () => {
+    if (timeoutId !== void 0) {
+      clearTimeout(timeoutId);
+      timeoutId = void 0;
+    }
+  };
+  return new ReadableStream({
+    async pull(controller) {
+      timeoutId = setTimeout(() => {
+        stopped = true;
+        const error = createError({
+          statusCode: 504,
+          statusMessage: "Gateway Timeout",
+          message: "Upstream response body timed out"
+        });
+        onTimeout();
+        controller.error(error);
+        void reader.cancel(error).catch((cancelError) => {
+          Object.assign(error, { cause: cancelError });
+        });
+      }, timeoutMs);
+      const result = await reader.read().catch((error) => {
+        clearIdleTimeout();
+        if (!stopped)
+          controller.error(error);
+        return void 0;
+      });
+      clearIdleTimeout();
+      if (!result || stopped)
+        return;
+      if (result.done) {
+        stopped = true;
+        controller.close();
+        return;
+      }
+      controller.enqueue(result.value);
+    },
+    async cancel(reason) {
+      stopped = true;
+      clearIdleTimeout();
+      await reader.cancel(reason);
+    }
+  });
+}
+function stripQueryFingerprinting(query, privacy) {
+  const stripped = stripPayloadFingerprinting(query, privacy);
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(stripped)) {
+    const values = Array.isArray(value) ? value : [value];
+    for (const item of values) {
+      if (item !== void 0 && item !== null)
+        params.append(key, typeof item === "object" ? JSON.stringify(item) : String(item));
+    }
+  }
+  return { queryString: params.toString(), stripped };
+}
+export default defineEventHandler(async (event) => {
+  const config = useRuntimeConfig();
+  const proxyConfig = config["nuxt-scripts-proxy"];
+  if (!proxyConfig) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: "First-party proxy not configured"
+    });
+  }
+  const { proxyPrefix, domainPrivacy, aliasToDomain, privacy: globalPrivacy, debug = import.meta.dev } = proxyConfig;
+  const path = event.path;
+  const log = debug ? (message, ...args) => {
+    console.debug(message, ...args);
+  } : () => {
+  };
+  const afterPrefix = path.slice(proxyPrefix.length + 1);
+  const slashIdx = afterPrefix.indexOf("/");
+  const segment = slashIdx > 0 ? afterPrefix.slice(0, slashIdx) : afterPrefix;
+  const remainingPath = slashIdx > 0 ? afterPrefix.slice(slashIdx) : "/";
+  const domain = aliasToDomain && Object.hasOwn(aliasToDomain, segment) ? aliasToDomain[segment] : segment;
+  if (!domain) {
+    log("[proxy] No domain in path:", path);
+    throw createError({
+      statusCode: 404,
+      statusMessage: "No proxy domain found",
+      message: `No domain in proxy path: ${path}`
+    });
+  }
+  if (!isPublicNetworkHostname(domain)) {
+    log("[proxy] Rejected local or non-public target:", domain);
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Local network targets are not allowed"
+    });
+  }
+  let perScriptInput;
+  for (const [configDomain, privacyInput] of Object.entries(domainPrivacy)) {
+    if (matchDomain(domain, configDomain)) {
+      perScriptInput = privacyInput;
+      break;
+    }
+  }
+  if (perScriptInput === void 0) {
+    log("[proxy] Rejected: domain not in allowlist:", domain);
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Domain not allowed",
+      message: `Proxy domain not in allowlist: ${domain}`
+    });
+  }
+  const targetBase = `https://${domain}`;
+  log("[proxy] Matched:", domain, "->", targetBase);
+  const perScriptResolved = resolvePrivacy(perScriptInput ?? true);
+  const privacy = globalPrivacy !== void 0 ? mergePrivacy(perScriptResolved, globalPrivacy) : perScriptResolved;
+  const anyPrivacy = privacy.ip || privacy.userAgent || privacy.language || privacy.screen || privacy.timezone || privacy.hardware;
+  const originalHeaders = getHeaders(event);
+  const originalQuery = getQuery(event);
+  const contentType = originalHeaders["content-type"]?.toLowerCase() || "";
+  const compressionParam = originalQuery.compression || "";
+  const method = event.method?.toUpperCase();
+  const isWriteMethod = method === "POST" || method === "PUT" || method === "PATCH";
+  const transformableBodyType = contentType.includes("application/x-www-form-urlencoded") ? "form" : contentType.includes("json") ? "json" : void 0;
+  const hasOpaqueBodyEncoding = Boolean(
+    originalHeaders["content-encoding"] || contentType.includes("octet-stream") || compressionParam && COMPRESSION_RE.test(compressionParam)
+  );
+  const shouldTransformBody = isWriteMethod && anyPrivacy && !hasOpaqueBodyEncoding && transformableBodyType !== void 0;
+  let targetUrl = targetBase + remainingPath;
+  let strippedQueryRecord;
+  if (anyPrivacy) {
+    if (Object.keys(originalQuery).length > 0) {
+      const { queryString, stripped } = stripQueryFingerprinting(originalQuery, privacy);
+      strippedQueryRecord = stripped;
+      const basePath = targetUrl.split("?")[0] || targetUrl;
+      targetUrl = queryString ? `${basePath}?${queryString}` : basePath;
+    }
+  }
+  const headers = {};
+  const connectionHeaderValue = originalHeaders.connection;
+  const connectionNamedHeaders = connectionHeaderValue ? new Set(connectionHeaderValue.split(",").map((h) => h.trim().toLowerCase()).filter(Boolean)) : null;
+  for (const [key, value] of Object.entries(originalHeaders)) {
+    if (!value)
+      continue;
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === "host")
+      continue;
+    if (SKIP_REQUEST_HEADERS.has(lowerKey))
+      continue;
+    if (connectionNamedHeaders?.has(lowerKey))
+      continue;
+    if (SENSITIVE_HEADERS.includes(lowerKey))
+      continue;
+    if (lowerKey === "content-length") {
+      if (shouldTransformBody)
+        continue;
+      headers[lowerKey] = value;
+      continue;
+    }
+    if (lowerKey === "x-forwarded-for" || lowerKey === "x-real-ip" || lowerKey === "forwarded" || lowerKey === "cf-connecting-ip" || lowerKey === "true-client-ip" || lowerKey === "x-client-ip" || lowerKey === "x-cluster-client-ip") {
+      if (privacy.ip)
+        continue;
+      headers[lowerKey] = value;
+      continue;
+    }
+    if (lowerKey === "user-agent") {
+      headers[key] = privacy.userAgent ? normalizeUserAgent(value) : value;
+      continue;
+    }
+    if (lowerKey === "accept-language") {
+      headers[key] = privacy.language ? normalizeLanguage(value) : value;
+      continue;
+    }
+    if (lowerKey === "sec-ch-ua" || lowerKey === "sec-ch-ua-full-version-list") {
+      headers[lowerKey] = privacy.hardware ? value.replace(CLIENT_HINT_VERSION_RE, ';v="$1"') : value;
+      continue;
+    }
+    if (lowerKey === "sec-ch-ua-platform-version" || lowerKey === "sec-ch-ua-arch" || lowerKey === "sec-ch-ua-model" || lowerKey === "sec-ch-ua-bitness") {
+      if (privacy.hardware)
+        continue;
+      headers[lowerKey] = value;
+      continue;
+    }
+    headers[key] = value;
+  }
+  if (!headers["x-forwarded-for"]) {
+    const clientIP = getRequestIP(event, { xForwardedFor: true });
+    if (clientIP) {
+      if (privacy.ip) {
+        headers["x-forwarded-for"] = anonymizeIP(clientIP);
+      } else {
+        headers["x-forwarded-for"] = clientIP;
+      }
+    }
+  } else if (privacy.ip) {
+    headers["x-forwarded-for"] = headers["x-forwarded-for"].split(",").map((ip) => anonymizeIP(ip.trim())).join(", ");
+  }
+  let body;
+  let rawBody;
+  let passthroughBody = false;
+  if (isWriteMethod) {
+    if (!shouldTransformBody) {
+      passthroughBody = true;
+    } else if (transformableBodyType === "form") {
+      const formBody = await readTransformBody(event);
+      rawBody = formBody;
+      if (formBody != null) {
+        const params = new URLSearchParams(formBody);
+        const formRecord = /* @__PURE__ */ Object.create(null);
+        for (const [key, value] of params.entries()) {
+          if (Object.hasOwn(formRecord, key)) {
+            const existing = formRecord[key];
+            formRecord[key] = Array.isArray(existing) ? [...existing, value] : [existing, value];
+          } else {
+            formRecord[key] = value;
+          }
+        }
+        const stripped = stripPayloadFingerprinting(formRecord, privacy);
+        const transformedValues = /* @__PURE__ */ new Map();
+        for (const [key, value] of Object.entries(stripped)) {
+          transformedValues.set(key, Array.isArray(value) ? [...value] : [value]);
+        }
+        const transformed = new URLSearchParams();
+        for (const [key] of params.entries()) {
+          const value = transformedValues.get(key)?.shift();
+          if (value === void 0 || value === null)
+            continue;
+          transformed.append(key, typeof value === "string" ? value : JSON.stringify(value));
+        }
+        body = transformed.toString();
+      }
+    } else {
+      const jsonBody = await readTransformBody(event);
+      if (jsonBody !== void 0) {
+        try {
+          rawBody = JSON.parse(jsonBody);
+        } catch (error) {
+          throw createError({
+            statusCode: 400,
+            statusMessage: "Invalid JSON proxy request body",
+            cause: error
+          });
+        }
+      }
+      if (Array.isArray(rawBody)) {
+        body = rawBody.map(
+          (item) => item && typeof item === "object" && !Array.isArray(item) ? stripPayloadFingerprinting(item, privacy) : item
+        );
+      } else if (rawBody !== null && typeof rawBody === "object") {
+        body = stripPayloadFingerprinting(rawBody, privacy);
+      } else {
+        body = rawBody;
+      }
+    }
+  }
+  const nitro = useNitroApp();
+  await nitro.hooks?.callHook?.("nuxt-scripts:proxy", {
+    timestamp: Date.now(),
+    path: event.path,
+    targetUrl,
+    method: method || "GET",
+    privacy,
+    passthroughBody,
+    original: {
+      headers: { ...originalHeaders },
+      query: originalQuery,
+      body: passthroughBody ? "<passthrough>" : rawBody ?? null
+    },
+    stripped: {
+      headers,
+      query: strippedQueryRecord ?? originalQuery,
+      body: passthroughBody ? "<passthrough>" : body ?? null
+    }
+  });
+  log("[proxy] Fetching:", targetUrl);
+  const controller = new AbortController();
+  let timedOut = false;
+  const timeoutId = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, UPSTREAM_TIMEOUT_MS);
+  let fetchBody;
+  if (passthroughBody && originalHeaders["content-length"] !== "0") {
+    fetchBody = getRequestWebStream(event);
+  } else if (body !== void 0) {
+    fetchBody = transformableBodyType === "json" ? JSON.stringify(body) : String(body);
+  }
+  let response;
+  let network;
+  try {
+    network = await createPublicNetworkDispatcher();
+    const requestInit = {
+      method: method || "GET",
+      headers,
+      body: fetchBody,
+      credentials: "omit",
+      // Don't send cookies to third parties
+      signal: controller.signal,
+      redirect: "manual",
+      duplex: fetchBody instanceof ReadableStream ? "half" : void 0
+    };
+    response = await network.fetch(targetUrl, requestInit);
+    clearTimeout(timeoutId);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    await closePublicNetworkDispatcher(network, err);
+    log("[proxy] Upstream error:", err);
+    const blockedPrivateNetwork = isPrivateNetworkResolutionError(err);
+    throw createError({
+      statusCode: blockedPrivateNetwork ? 403 : timedOut ? 504 : 502,
+      statusMessage: blockedPrivateNetwork ? "Local network targets are not allowed" : timedOut ? "Gateway Timeout" : "Bad Gateway",
+      message: "Proxy upstream request failed",
+      cause: err,
+      data: {
+        errorName: err?.name,
+        errorCode: timedOut ? "TIMEOUT" : err?.code
+      }
+    });
+  }
+  log("[proxy] Response:", response.status, response.statusText);
+  if (response.status >= 300 && response.status < 400 && response.status !== 304) {
+    clearTimeout(timeoutId);
+    const redirectError = createError({
+      statusCode: 502,
+      statusMessage: "Unsafe upstream redirect",
+      message: "Proxy upstream returned a redirect that was not followed"
+    });
+    await response.body?.cancel(redirectError).catch((cancelError) => Object.assign(redirectError, { cleanupError: cancelError }));
+    await closePublicNetworkDispatcher(network, redirectError);
+    throw redirectError;
+  }
+  const responseConnectionHeaders = new Set(
+    (response.headers.get("connection") || "").split(",").map((header) => header.trim().toLowerCase()).filter(Boolean)
+  );
+  response.headers.forEach((value, key) => {
+    const lowerKey = key.toLowerCase();
+    if (!SKIP_RESPONSE_HEADERS.has(lowerKey) && !responseConnectionHeaders.has(lowerKey)) {
+      setResponseHeader(event, key, value);
+    }
+  });
+  setResponseHeader(event, "Content-Security-Policy", "sandbox; default-src 'none'; base-uri 'none'; form-action 'none'");
+  setResponseHeader(event, "X-Content-Type-Options", "nosniff");
+  setResponseStatus(event, response.status, response.statusText);
+  if (!response.body) {
+    await closePublicNetworkDispatcher(network);
+    return null;
+  }
+  const guardedBody = withResponseBodyIdleTimeout(response.body, UPSTREAM_TIMEOUT_MS, () => controller.abort());
+  let streamError;
+  try {
+    return await sendStream(event, guardedBody);
+  } catch (error) {
+    streamError = error;
+    throw error;
+  } finally {
+    await closePublicNetworkDispatcher(network, streamError);
+  }
+});

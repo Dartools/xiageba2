@@ -1,0 +1,29 @@
+import type { RegistryScriptInput } from '#nuxt-scripts/types';
+import { VercelAnalyticsOptions } from './schemas.js';
+export { VercelAnalyticsOptions };
+export type AllowedPropertyValues = string | number | boolean | null;
+export type VercelAnalyticsMode = 'auto' | 'development' | 'production';
+export interface BeforeSendEvent {
+    type: 'pageview' | 'event';
+    url: string;
+}
+export type BeforeSend = (event: BeforeSendEvent) => BeforeSendEvent | null;
+export type VercelAnalyticsInput = RegistryScriptInput<typeof VercelAnalyticsOptions, false, false> & {
+    beforeSend?: BeforeSend;
+};
+export interface VercelAnalyticsApi {
+    va: (event: string, properties?: unknown) => void;
+    track: (name: string, properties?: Record<string, AllowedPropertyValues>) => void;
+    pageview: (options?: {
+        route?: string | null;
+        path?: string;
+    }) => void;
+}
+declare global {
+    interface Window {
+        va?: (event: string, properties?: unknown) => void;
+        vaq?: [string, unknown?][];
+        vam?: VercelAnalyticsMode;
+    }
+}
+export declare function useScriptVercelAnalytics<T extends VercelAnalyticsApi>(_options?: VercelAnalyticsInput): import("#nuxt-scripts/types").UseScriptContext<T>;

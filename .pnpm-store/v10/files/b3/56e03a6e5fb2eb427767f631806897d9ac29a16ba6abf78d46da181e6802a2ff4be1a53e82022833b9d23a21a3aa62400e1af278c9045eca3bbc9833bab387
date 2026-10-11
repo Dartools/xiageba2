@@ -1,0 +1,32 @@
+export declare const Math: import("vue").DefineComponent<import("vue").ExtractPropTypes<{
+    content: {
+        type: StringConstructor;
+        required: true;
+    };
+    class: {
+        type: StringConstructor;
+        default: string;
+    };
+    __node: {
+        type: ObjectConstructor;
+        default: () => {};
+    };
+}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
+    [key: string]: any;
+}>, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<import("vue").ExtractPropTypes<{
+    content: {
+        type: StringConstructor;
+        required: true;
+    };
+    class: {
+        type: StringConstructor;
+        default: string;
+    };
+    __node: {
+        type: ObjectConstructor;
+        default: () => {};
+    };
+}>> & Readonly<{}>, {
+    class: string;
+    __node: Record<string, any>;
+}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;

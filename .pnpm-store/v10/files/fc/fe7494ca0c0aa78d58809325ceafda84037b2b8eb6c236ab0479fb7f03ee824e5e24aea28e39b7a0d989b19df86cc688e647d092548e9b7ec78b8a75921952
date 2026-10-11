@@ -1,0 +1,24 @@
+import type { RegistryScriptInput } from '#nuxt-scripts/types';
+import { GoogleRecaptchaOptions } from './schemas.js';
+export { GoogleRecaptchaOptions };
+export type GoogleRecaptchaInput = RegistryScriptInput<typeof GoogleRecaptchaOptions>;
+export interface GoogleRecaptchaApi {
+    grecaptcha: {
+        ready: (callback: () => void) => void;
+        execute: (siteKey: string, options: {
+            action: string;
+        }) => Promise<string>;
+        enterprise?: {
+            ready: (callback: () => void) => void;
+            execute: (siteKey: string, options: {
+                action: string;
+            }) => Promise<string>;
+        };
+    };
+}
+declare global {
+    interface Window {
+        grecaptcha: GoogleRecaptchaApi['grecaptcha'];
+    }
+}
+export declare function useScriptGoogleRecaptcha<T extends GoogleRecaptchaApi>(_options?: GoogleRecaptchaInput): import("#nuxt-scripts/types").UseScriptContext<T>;

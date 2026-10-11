@@ -1,0 +1,8 @@
+export interface AbortablePromiseOptions {
+    signal?: AbortSignal;
+    abortMessage?: string;
+}
+type PromiseSetup<T> = (resolve: (value: T | PromiseLike<T>) => void, reject: (reason?: unknown) => void) => void | (() => void);
+export declare function createAbortError(message?: string): Error;
+export declare function createAbortablePromise<T>(setup: PromiseSetup<T>, options?: AbortablePromiseOptions): Promise<T>;
+export {};

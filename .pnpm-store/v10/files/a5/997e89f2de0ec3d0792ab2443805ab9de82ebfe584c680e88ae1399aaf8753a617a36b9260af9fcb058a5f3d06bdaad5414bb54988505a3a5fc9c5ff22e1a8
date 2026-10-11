@@ -1,0 +1,59 @@
+export interface MathConfig {
+    /**
+     * Throw on parse errors or return error message
+     * @default false
+     */
+    throwOnError?: boolean;
+    /**
+     * Additional katex options
+     */
+    options?: Record<string, unknown>;
+}
+/**
+ * Render LaTeX math expression to HTML using KaTeX
+ *
+ * @param code LaTeX math expression
+ * @param displayMode Whether to render in display mode
+ * @param config KaTeX configuration
+ * @returns HTML string
+ *
+ * @example
+ * ```ts
+ * const html = renderMath('E = mc^2', false)
+ * const display = renderMath('x^2', true)
+ * ```
+ */
+export declare function renderMath(code: string, displayMode: boolean, config?: MathConfig): string;
+/**
+ * Check if code is valid LaTeX math syntax
+ *
+ * @param code LaTeX math expression
+ * @returns true if valid, false otherwise
+ *
+ * @example
+ * ```ts
+ * validateMath('E = mc^2') // true
+ * validateMath('\\invalid') // false
+ * ```
+ */
+export declare function validateMath(code: string): boolean;
+/**
+ * Create math plugin for comark
+ *
+ * This plugin processes markdown-it tokens and converts math expressions
+ * with $ and $$ delimiters to HTML using KaTeX.
+ *
+ * @param config Math rendering configuration
+ *
+ * @example
+ * ```ts
+ * import { parseMarkdown } from 'comark'
+ * import math from 'comark/plugins/math'
+ *
+ * const result = await parseMarkdown('Inline $x^2$ and display $$E = mc^2$$', {
+ *   plugins: [math({ throwOnError: false })]
+ * })
+ * ```
+ */
+declare const _default: import("comark").ComarkPluginFactory<MathConfig, {}, {}>;
+export default _default;

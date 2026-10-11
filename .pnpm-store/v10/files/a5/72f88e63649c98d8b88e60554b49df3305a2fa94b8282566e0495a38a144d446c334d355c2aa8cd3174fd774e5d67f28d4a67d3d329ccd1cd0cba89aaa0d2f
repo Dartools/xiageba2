@@ -1,0 +1,95 @@
+import { any, array, boolean, literal, object, optional, record, string, union } from "valibot";
+import { logger } from "../logger.js";
+import { useRegistryScript } from "../utils.js";
+const extensions = [
+  literal("hash"),
+  literal("outbound-links"),
+  literal("file-downloads"),
+  literal("tagged-events"),
+  literal("revenue"),
+  literal("pageview-props"),
+  literal("compat"),
+  literal("local"),
+  literal("manual")
+];
+const PlausibleAnalyticsOptionsSchema = object({
+  // New October 2025: unique script ID per site (replaces domain)
+  scriptId: optional(string()),
+  // Legacy: domain-based approach (deprecated)
+  domain: optional(string()),
+  // Legacy extension support (deprecated)
+  extension: optional(union([union(extensions), array(union(extensions))])),
+  // New October 2025 init options
+  customProperties: optional(record(string(), any())),
+  endpoint: optional(string()),
+  fileDownloads: optional(object({
+    fileExtensions: optional(array(string()))
+  })),
+  hashBasedRouting: optional(boolean()),
+  autoCapturePageviews: optional(boolean()),
+  captureOnLocalhost: optional(boolean()),
+  trackForms: optional(boolean())
+});
+export function useScriptPlausibleAnalytics(_options) {
+  return useRegistryScript("plausibleAnalytics", (options) => {
+    const useNewScript = !!options?.scriptId;
+    const useLegacyScript = !!options?.extension;
+    if (import.meta.dev) {
+      if (!useNewScript && !options?.domain) {
+        logger.warn("Plausible Analytics: No `scriptId` or `domain` provided. Please provide either `scriptId` or `domain` (legacy).");
+      }
+      if (useNewScript && options?.domain) {
+        logger.warn("Plausible Analytics: You are using both `scriptId` (new format) and `domain` (deprecated). Please use only `scriptId` for the new format.");
+      }
+      if (useNewScript && useLegacyScript) {
+        logger.warn("Plausible Analytics: You are using both `scriptId` (new format) and `extension` (deprecated). Please use `scriptId` with init options like `hashBasedRouting`, `captureOnLocalhost`, etc. instead.");
+      }
+    }
+    let scriptSrc;
+    if (useNewScript) {
+      scriptSrc = `https://plausible.io/js/pa-${options.scriptId}.js`;
+    } else if (useLegacyScript) {
+      const extensions2 = Array.isArray(options.extension) ? options.extension.join(".") : [options.extension];
+      scriptSrc = `https://plausible.io/js/script.${extensions2}.js`;
+    } else {
+      scriptSrc = "https://plausible.io/js/script.js";
+    }
+    const initOptions = {};
+    if (options?.customProperties)
+      initOptions.customProperties = options.customProperties;
+    if (options?.endpoint)
+      initOptions.endpoint = options.endpoint;
+    if (options?.fileDownloads)
+      initOptions.fileDownloads = options.fileDownloads;
+    if (options?.hashBasedRouting !== void 0)
+      initOptions.hashBasedRouting = options.hashBasedRouting;
+    if (options?.autoCapturePageviews !== void 0)
+      initOptions.autoCapturePageviews = options.autoCapturePageviews;
+    if (options?.captureOnLocalhost !== void 0)
+      initOptions.captureOnLocalhost = options.captureOnLocalhost;
+    const scriptInput = { src: scriptSrc };
+    if (!useNewScript && options?.domain)
+      scriptInput["data-domain"] = options.domain;
+    if (!useNewScript && options?.endpoint)
+      scriptInput["data-api"] = options.endpoint;
+    return {
+      scriptInput,
+      schema: import.meta.dev ? PlausibleAnalyticsOptionsSchema : void 0,
+      scriptOptions: {
+        use() {
+          return { plausible: window.plausible };
+        },
+        clientInit: import.meta.server ? void 0 : () => {
+          const w = window;
+          w.plausible = w.plausible || function(...args) {
+            (w.plausible.q = w.plausible.q || []).push(args);
+          };
+          w.plausible.init = w.plausible.init || function(i) {
+            w.plausible.o = i || {};
+          };
+          w.plausible.init(initOptions);
+        }
+      }
+    };
+  }, _options);
+}

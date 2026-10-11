@@ -1,0 +1,235 @@
+<script setup>
+import { defu } from "defu";
+import { useAsyncData, useHead } from "nuxt/app";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useScriptTriggerElement } from "../composables/useScriptTriggerElement";
+import { useScriptVimeoPlayer } from "../registry/vimeo-player";
+import ScriptAriaLoadingIndicator from "./ScriptAriaLoadingIndicator.vue";
+const props = defineProps({
+  trigger: { type: [String, Array, Boolean], required: false, default: "mousedown" },
+  placeholderAttrs: { type: Object, required: false },
+  rootAttrs: { type: Object, required: false },
+  aboveTheFold: { type: Boolean, required: false },
+  vimeoOptions: { type: Object, required: false },
+  id: { type: null, required: false },
+  url: { type: null, required: false },
+  ratio: { type: String, required: false, default: "16/9" },
+  placeholderObjectFit: { type: String, required: false, default: "contain" }
+});
+const emits = defineEmits(["play", "playing", "pause", "ended", "timeupdate", "progress", "seeking", "seeked", "texttrackchange", "chapterchange", "cuechange", "cuepoint", "volumechange", "playbackratechange", "bufferstart", "bufferend", "error", "loaded", "durationchange", "fullscreenchange", "qualitychange", "camerachange", "resize", "enterpictureinpicture", "leavepictureinpicture"]);
+defineSlots();
+const events = [
+  "play",
+  "playing",
+  "pause",
+  "ended",
+  "timeupdate",
+  "progress",
+  "seeking",
+  "seeked",
+  "texttrackchange",
+  "chapterchange",
+  "cuechange",
+  "cuepoint",
+  "volumechange",
+  "playbackratechange",
+  "bufferstart",
+  "bufferend",
+  "error",
+  "loaded",
+  "durationchange",
+  "fullscreenchange",
+  "qualitychange",
+  "camerachange",
+  "resize",
+  "enterpictureinpicture",
+  "leavepictureinpicture"
+];
+const elVimeo = ref();
+const rootEl = ref();
+const trigger = useScriptTriggerElement({ trigger: props.trigger, el: rootEl });
+let clickTriggered = false;
+if (props.trigger === "mousedown" && trigger instanceof Promise) {
+  trigger.then((val) => {
+    if (val) {
+      clickTriggered = true;
+    }
+  });
+}
+const ready = ref(false);
+const { onLoaded, status } = useScriptVimeoPlayer({
+  scriptOptions: {
+    trigger
+  }
+});
+if (import.meta.server) {
+  useHead({
+    link: [
+      {
+        rel: props.aboveTheFold ? "preconnect" : "dns-prefetch",
+        href: "https://i.vimeocdn.com"
+      }
+    ]
+  });
+}
+const id = computed(() => {
+  return props.vimeoOptions?.id || props.id;
+});
+const videoId = computed(() => `vimeo-embed:${id.value}`);
+const { data: payload } = useAsyncData(
+  videoId,
+  // TODO ideally we cache this
+  () => $fetch(`https://vimeo.com/api/oembed.json`, {
+    params: {
+      url: `https://vimeo.com/${id.value}`,
+      format: "json"
+    }
+  }),
+  {
+    lazy: true
+  }
+);
+const placeholder = computed(() => {
+  return payload.value?.thumbnail_url;
+});
+let player;
+defineExpose({
+  play: () => player?.play(),
+  pause: () => player?.pause(),
+  getDuration: () => player?.getDuration(),
+  getCurrentTime: () => player?.getCurrentTime(),
+  setCurrentTime: (time) => player?.setCurrentTime(time),
+  getVolume: () => player?.getVolume(),
+  setVolume: (volume) => player?.setVolume(volume),
+  getPaused: () => player?.getPaused(),
+  getEnded: () => player?.getEnded(),
+  getLoop: () => player?.getLoop(),
+  setLoop: (loop) => player?.setLoop(loop),
+  getPlaybackRate: () => player?.getPlaybackRate(),
+  setPlaybackRate: (rate) => player?.setPlaybackRate(rate)
+});
+const width = computed(() => {
+  return props.vimeoOptions?.width || elVimeo.value?.parentNode?.offsetWidth || 640;
+});
+const height = computed(() => {
+  return props.vimeoOptions?.height || elVimeo.value?.parentNode?.offsetHeight || 480;
+});
+onMounted(() => {
+  onLoaded(async ({ Vimeo }) => {
+    const vimeoOptions = props.vimeoOptions || {};
+    if (!vimeoOptions.id && props.id) {
+      vimeoOptions.id = props.id;
+    }
+    if (!vimeoOptions.url && props.url) {
+      vimeoOptions.url = props.url;
+    }
+    vimeoOptions.width = width.value;
+    vimeoOptions.height = height.value;
+    player = new Vimeo.Player(elVimeo.value, vimeoOptions);
+    if (clickTriggered) {
+      player.play();
+      clickTriggered = false;
+    }
+    for (const event of events) {
+      player.on(event, (e) => {
+        emits(event, e, player);
+        if (event === "loaded")
+          ready.value = true;
+      });
+    }
+  });
+});
+watch(() => props.id, (v) => {
+  if (v) {
+    player?.loadVideo(Number(v));
+  }
+});
+watch(status, (status2) => {
+  if (status2 === "error") {
+    emits("error");
+  }
+});
+const keyboardTriggerable = computed(() => {
+  if (ready.value)
+    return false;
+  const triggers = Array.isArray(props.trigger) ? props.trigger : [props.trigger];
+  return triggers.some((t) => typeof t === "string" && !["immediate", "onNuxtReady", "visibility", "visible"].includes(t));
+});
+function onPlaceholderKeydown(e) {
+  if (e.key !== "Enter" && e.key !== " ")
+    return;
+  e.preventDefault();
+  if (!rootEl.value)
+    return;
+  const triggers = (Array.isArray(props.trigger) ? props.trigger : [props.trigger]).filter(Boolean);
+  for (const t of triggers) {
+    if (typeof t !== "string")
+      continue;
+    if (["immediate", "onNuxtReady", "visibility", "visible"].includes(t))
+      continue;
+    rootEl.value.dispatchEvent(new Event(t, { bubbles: false }));
+  }
+}
+const rootAttrs = computed(() => {
+  const interactive = keyboardTriggerable.value;
+  return defu(props.rootAttrs, {
+    "aria-busy": status.value === "loading",
+    "aria-label": status.value === "awaitingLoad" ? interactive ? "Play video" : "Vimeo Player - Placeholder" : status.value === "loading" ? "Vimeo Player - Loading" : "Vimeo Player - Loaded",
+    "aria-live": "polite",
+    "role": interactive ? "button" : "application",
+    "tabindex": interactive ? 0 : void 0,
+    "style": {
+      "--vimeo-ratio": props.ratio,
+      "maxWidth": "100%",
+      "width": `auto`,
+      "height": "auto",
+      "aspectRatio": props.ratio,
+      "position": "relative",
+      "backgroundColor": "black"
+    },
+    ...trigger instanceof Promise ? trigger.ssrAttrs || {} : {}
+  });
+});
+const placeholderAttrs = computed(() => {
+  return defu(props.placeholderAttrs, {
+    src: placeholder.value,
+    alt: "Play video",
+    loading: props.aboveTheFold ? "eager" : "lazy",
+    // @ts-expect-error untyped
+    fetchpriority: props.aboveTheFold ? "high" : void 0,
+    style: {
+      cursor: "pointer",
+      width: "100%",
+      objectFit: props.placeholderObjectFit,
+      height: "100%"
+    }
+  });
+});
+onBeforeUnmount(() => {
+  const currentPlayer = player;
+  player = void 0;
+  void currentPlayer?.destroy().catch((error) => {
+    if (import.meta.dev)
+      console.warn("[nuxt-scripts] Vimeo player cleanup failed:", error);
+  });
+});
+</script>
+
+<template>
+  <div ref="rootEl" v-bind="rootAttrs" @keydown="keyboardTriggerable ? onPlaceholderKeydown($event) : void 0">
+    <div v-show="ready" ref="elVimeo" class="vimeo-player" />
+    <slot v-if="!ready" v-bind="payload" :placeholder="placeholder" name="placeholder">
+      <img v-if="placeholder" v-bind="placeholderAttrs">
+    </slot>
+    <slot v-if="status === 'loading'" name="loading">
+      <ScriptAriaLoadingIndicator color="white" />
+    </slot>
+    <slot v-if="status === 'awaitingLoad'" name="awaitingLoad" />
+    <slot v-else-if="status === 'error'" name="error" />
+    <slot />
+  </div>
+</template>
+
+<style>
+.vimeo-player iframe{aspect-ratio:var(--vimeo-ratio,16/9);height:auto;max-width:100%!important;width:100%}
+</style>

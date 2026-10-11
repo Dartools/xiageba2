@@ -1,0 +1,50 @@
+import type { HTMLAttributes } from 'vue';
+type __VLS_Props = {
+    /**
+     * The Instagram post URL to embed
+     * e.g., https://www.instagram.com/p/ABC123/
+     */
+    postUrl: string;
+    /**
+     * Whether to include captions in the embed
+     * @default true
+     */
+    captions?: boolean;
+    /**
+     * Custom API endpoint for fetching embed HTML
+     */
+    apiEndpoint?: string;
+    /**
+     * Root element attributes
+     */
+    rootAttrs?: HTMLAttributes;
+};
+type __VLS_Slots = {
+    default?: (props: {
+        html: string;
+        shortcode: string | undefined;
+        postUrl: string;
+    }) => any;
+    loading?: () => any;
+    error?: (props: {
+        error: typeof error.value;
+    }) => any;
+};
+declare const error: import("vue").Ref<import("nuxt/app").NuxtError<unknown> | undefined, import("nuxt/app").NuxtError<unknown> | undefined>;
+declare const __VLS_base: import("vue").DefineComponent<__VLS_Props, {
+    html: import("vue").Ref<string | undefined, string | undefined>;
+    status: import("vue").Ref<import("nuxt/app").AsyncDataRequestStatus, import("nuxt/app").AsyncDataRequestStatus>;
+    error: import("vue").Ref<import("nuxt/app").NuxtError<unknown> | undefined, import("nuxt/app").NuxtError<unknown> | undefined>;
+    shortcode: import("vue").ComputedRef<string | undefined>;
+}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<__VLS_Props> & Readonly<{}>, {
+    apiEndpoint: string;
+    captions: boolean;
+}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+declare const __VLS_export: __VLS_WithSlots<typeof __VLS_base, __VLS_Slots>;
+declare const _default: typeof __VLS_export;
+export default _default;
+type __VLS_WithSlots<T, S> = T & {
+    new (): {
+        $slots: S;
+    };
+};

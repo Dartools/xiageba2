@@ -1,0 +1,21 @@
+import { lookup } from "node:dns";
+import { Agent, fetch } from "undici";
+export const createNetworkDispatcher = async (createLookup, resolveHostnameOverride) => {
+  const resolveHostname = resolveHostnameOverride || ((hostname, callback) => {
+    lookup(hostname, { all: true, verbatim: true }, (error, addresses) => {
+      callback(error, addresses);
+    });
+  });
+  const dispatcher = new Agent({
+    connect: {
+      lookup: createLookup(resolveHostname)
+    }
+  });
+  return {
+    fetch: ((input, init) => fetch(input, {
+      ...init,
+      dispatcher
+    })),
+    close: () => dispatcher.close()
+  };
+};

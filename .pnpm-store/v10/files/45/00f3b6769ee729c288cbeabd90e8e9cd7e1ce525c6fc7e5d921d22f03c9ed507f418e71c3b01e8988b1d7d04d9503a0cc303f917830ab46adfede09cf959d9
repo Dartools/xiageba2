@@ -1,0 +1,2 @@
+/** Remove proxy-only credentials before constructing an upstream URL or cache key. */
+export declare function stripProxyAuthQuery(query: Record<string, unknown>): Record<string, unknown>;

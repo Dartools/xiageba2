@@ -1,0 +1,5 @@
+import * as v8 from "./v8.js";
+export { v8 };
+export function selectSnippets(_major) {
+  return v8;
+}

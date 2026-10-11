@@ -1,0 +1,2 @@
+import type { NodeHandler } from 'comark/render';
+export declare const handlers: Record<string, NodeHandler>;

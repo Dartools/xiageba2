@@ -1,0 +1,66 @@
+import { useHead } from "@unhead/vue";
+import { watch } from "vue";
+import { useRegistryScript } from "../utils.js";
+import { armYouTubeReadiness, useYouTubeReadinessState } from "../utils/youtube-readiness.js";
+const cleanupDecoration = Symbol("nuxt-scripts:youtube-cleanup");
+const readinessDecoration = Symbol("nuxt-scripts:youtube-readiness");
+export function useScriptYouTubePlayer(_options) {
+  const instance = useRegistryScript("youtubePlayer", () => ({
+    scriptInput: {
+      src: "https://www.youtube.com/iframe_api",
+      crossorigin: false
+      // crossorigin can't be set or it breaks
+    },
+    scriptOptions: {
+      use() {
+        const readiness = useYouTubeReadinessState();
+        return {
+          YT: window.YT || readiness.promise.then(() => {
+            return window.YT;
+          })
+        };
+      }
+    },
+    clientInit: import.meta.server ? void 0 : () => {
+      armYouTubeReadiness(useYouTubeReadinessState());
+    }
+  }), _options);
+  const clientInstance = import.meta.server || typeof window === "undefined" ? void 0 : instance;
+  if (clientInstance && !clientInstance[cleanupDecoration]) {
+    clientInstance[cleanupDecoration] = true;
+    clientInstance[readinessDecoration] = useYouTubeReadinessState();
+    const originalRemove = instance.remove;
+    instance.remove = () => {
+      clientInstance[readinessDecoration]?.controller?.abort();
+      return originalRemove();
+    };
+  }
+  if (import.meta.client) {
+    const _ = watch(instance.status, (status) => {
+      if (status === "loading") {
+        useHead({
+          link: [
+            {
+              rel: "preconnect",
+              href: "https://www.youtube-nocookie.com"
+            },
+            {
+              rel: "preconnect",
+              href: "https://www.google.com"
+            },
+            {
+              rel: "preconnect",
+              href: "https://googleads.g.doubleclick.net"
+            },
+            {
+              rel: "preconnect",
+              href: "https://static.doubleclick.net"
+            }
+          ]
+        });
+        _();
+      }
+    });
+  }
+  return instance;
+}

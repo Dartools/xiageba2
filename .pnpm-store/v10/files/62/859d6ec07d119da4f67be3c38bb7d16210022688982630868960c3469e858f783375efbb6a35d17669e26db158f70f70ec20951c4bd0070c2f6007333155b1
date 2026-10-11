@@ -1,0 +1,46 @@
+<script setup>
+import { useAsyncData } from "nuxt/app";
+import { computed } from "vue";
+import { useScriptProxyUrl } from "../composables/useScriptProxyUrl";
+import { extractInstagramShortcode } from "../registry/instagram-embed";
+import { requireRegistryEndpoint, scriptsPrefix } from "../utils";
+const props = defineProps({
+  postUrl: { type: String, required: true },
+  captions: { type: Boolean, required: false, default: true },
+  apiEndpoint: { type: String, required: false, default: void 0 },
+  rootAttrs: { type: Object, required: false }
+});
+defineSlots();
+const prefix = scriptsPrefix();
+const apiEndpoint = computed(() => props.apiEndpoint || `${prefix}/embed/instagram`);
+if (!props.apiEndpoint)
+  requireRegistryEndpoint("ScriptInstagramEmbed", "instagramEmbed");
+const proxyUrl = useScriptProxyUrl();
+const shortcode = computed(() => extractInstagramShortcode(props.postUrl));
+const { data: html, status, error } = useAsyncData(
+  `instagram-embed-${props.postUrl}`,
+  () => $fetch(proxyUrl(apiEndpoint.value, { url: props.postUrl, captions: props.captions })),
+  { watch: [() => props.postUrl, () => props.captions] }
+);
+defineExpose({
+  html,
+  status,
+  error,
+  shortcode
+});
+</script>
+
+<template>
+  <div v-bind="rootAttrs">
+    <slot v-if="status === 'pending'" name="loading">
+      <div>Loading Instagram post...</div>
+    </slot>
+    <slot v-else-if="status === 'error'" name="error" :error="error">
+      <div>Failed to load Instagram post</div>
+    </slot>
+    <slot v-else-if="html" :html="html" :shortcode="shortcode" :post-url="postUrl">
+      <!-- eslint-disable-next-line vue/no-v-html -->
+      <div v-html="html" />
+    </slot>
+  </div>
+</template>

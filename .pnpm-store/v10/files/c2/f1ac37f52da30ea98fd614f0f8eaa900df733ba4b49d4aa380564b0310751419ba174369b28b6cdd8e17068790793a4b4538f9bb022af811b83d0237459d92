@@ -1,0 +1,45 @@
+<script setup>
+import { watch } from "vue";
+import { bindGoogleMapsEvents, useGoogleMapsResource } from "./useGoogleMapsResource";
+const props = defineProps({
+  options: { type: Object, required: false }
+});
+const emit = defineEmits(["click", "contextmenu", "dblclick", "mousedown", "mousemove", "mouseout", "mouseover", "mouseup", "drag", "dragend", "dragstart"]);
+const eventsWithPolyMouseEventPayload = [
+  "click",
+  "contextmenu",
+  "dblclick",
+  "mousedown",
+  "mousemove",
+  "mouseout",
+  "mouseover",
+  "mouseup"
+];
+const eventsWithMapMouseEventPayload = [
+  "drag",
+  "dragend",
+  "dragstart"
+];
+const polygon = useGoogleMapsResource({
+  create({ mapsApi, map }) {
+    const p = new mapsApi.Polygon({ map, ...props.options });
+    bindGoogleMapsEvents(p, emit, {
+      withPayload: [...eventsWithPolyMouseEventPayload, ...eventsWithMapMouseEventPayload]
+    });
+    return p;
+  },
+  cleanup(p, { mapsApi }) {
+    mapsApi.event.clearInstanceListeners(p);
+    p.setMap(null);
+  }
+});
+watch(() => props.options, (options) => {
+  if (polygon.value && options) {
+    polygon.value.setOptions(options);
+  }
+}, { deep: true });
+</script>
+
+<template>
+
+</template>

@@ -1,0 +1,12 @@
+import type { MarkdownDocument } from '../../types';
+/**
+ * Extracts reusable nodes from the last output tree
+ * @param markdown - The markdown to parse
+ * @param lastOutput - The last output tree
+ * @returns The reusable nodes and the remaining markdown
+ */
+export declare function extractReusableNodes(markdown: string, lastOutput: MarkdownDocument): {
+    remainingMarkdownStartLine: number;
+    reusedNodes: import("../..").Node[];
+    remainingMarkdown: string;
+};

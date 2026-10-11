@@ -1,0 +1,210 @@
+<script setup>
+import { defu } from "defu";
+import { useHead } from "nuxt/app";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useScriptTriggerElement } from "../composables/useScriptTriggerElement";
+import { useScriptYouTubePlayer } from "../registry/youtube-player";
+import ScriptAriaLoadingIndicator from "./ScriptAriaLoadingIndicator.vue";
+const props = defineProps({
+  placeholderAttrs: { type: Object, required: false },
+  rootAttrs: { type: Object, required: false },
+  aboveTheFold: { type: Boolean, required: false },
+  trigger: { type: [String, Array, Boolean], required: false, default: "mousedown" },
+  videoId: { type: String, required: true },
+  playerVars: { type: null, required: false, default: { autoplay: 0, playsinline: 1 } },
+  width: { type: Number, required: false, default: 640 },
+  height: { type: Number, required: false, default: 360 },
+  ratio: { type: String, required: false, default: "16/9" },
+  cookies: { type: Boolean, required: false, default: false },
+  playerOptions: { type: null, required: false },
+  thumbnailSize: { type: String, required: false, default: "hq720" },
+  webp: { type: Boolean, required: false, default: true },
+  placeholderObjectFit: { type: String, required: false, default: "cover" }
+});
+const emits = defineEmits(["ready", "state-change", "playback-quality-change", "playback-rate-change", "error", "api-change"]);
+defineSlots();
+const events = [
+  "onReady",
+  "onStateChange",
+  "onPlaybackQualityChange",
+  "onPlaybackRateChange",
+  "onError",
+  "onApiChange"
+];
+const CAMEL_CASE_RE = /([A-Z])/g;
+const rootEl = ref();
+const youtubeEl = ref();
+const ready = ref(false);
+const isTriggered = ref(false);
+const trigger = useScriptTriggerElement({ trigger: props.trigger, el: rootEl });
+const script = useScriptYouTubePlayer({
+  scriptOptions: {
+    // Use immediate trigger so script loads when ANY player needs it
+    // Each player will wait for its own trigger before creating iframe
+    trigger
+  }
+});
+const { onLoaded, status } = script;
+const player = ref();
+const clickTriggered = ref(false);
+if (trigger instanceof Promise) {
+  trigger.then((triggered) => {
+    if (triggered) {
+      isTriggered.value = true;
+      if (props.trigger === "mousedown") {
+        clickTriggered.value = true;
+      }
+    }
+  });
+} else {
+  isTriggered.value = true;
+}
+const stopVideoIdWatch = watch(() => props.videoId, (newId) => {
+  if (ready.value && player.value) {
+    player.value.loadVideoById(newId);
+  }
+});
+onBeforeUnmount(() => {
+  stopVideoIdWatch();
+  player.value?.destroy();
+});
+onMounted(() => {
+  onLoaded(async (instance) => {
+    if (!isTriggered.value && trigger instanceof Promise) {
+      const triggered = await trigger;
+      if (!triggered)
+        return;
+    }
+    if (!youtubeEl.value)
+      return;
+    const YouTube = instance.YT instanceof Promise ? await instance.YT : instance.YT;
+    await new Promise((resolve) => {
+      if (typeof YT.Player === "undefined")
+        YouTube.ready(resolve);
+      else
+        resolve();
+    });
+    if (!youtubeEl.value)
+      return;
+    player.value = new YT.Player(youtubeEl.value, {
+      host: !props.cookies ? "https://www.youtube-nocookie.com" : "https://www.youtube.com",
+      videoId: props.videoId,
+      width: props.width,
+      height: props.height,
+      playerVars: props.playerVars,
+      ...props.playerOptions,
+      events: Object.fromEntries(events.map((event) => [event, (e) => {
+        const emitEventName = event.replace(CAMEL_CASE_RE, "-$1").replace("on-", "").toLowerCase();
+        emits(emitEventName, e);
+        if (event === "onReady") {
+          ready.value = true;
+          if (clickTriggered.value) {
+            player.value?.playVideo();
+            clickTriggered.value = false;
+          }
+        }
+      }]))
+    });
+  });
+  watch(status, (status2) => {
+    if (status2 === "error") {
+      emits("error");
+    }
+  });
+});
+defineExpose({
+  player
+});
+const keyboardTriggerable = computed(() => {
+  if (isTriggered.value)
+    return false;
+  const triggers = Array.isArray(props.trigger) ? props.trigger : [props.trigger];
+  return triggers.some((t) => typeof t === "string" && !["immediate", "onNuxtReady", "visibility", "visible"].includes(t));
+});
+function onPlaceholderKeydown(e) {
+  if (e.key !== "Enter" && e.key !== " ")
+    return;
+  e.preventDefault();
+  if (!rootEl.value)
+    return;
+  const triggers = (Array.isArray(props.trigger) ? props.trigger : [props.trigger]).filter(Boolean);
+  for (const t of triggers) {
+    if (["immediate", "onNuxtReady", "visibility", "visible"].includes(t))
+      continue;
+    rootEl.value.dispatchEvent(new Event(t, { bubbles: false }));
+  }
+}
+const rootAttrs = computed(() => {
+  const interactive = keyboardTriggerable.value;
+  return defu(props.rootAttrs, {
+    "aria-busy": status.value === "loading",
+    "aria-label": status.value === "awaitingLoad" ? interactive ? "Play video" : "YouTube Player - Placeholder" : status.value === "loading" ? "YouTube Player - Loading" : "YouTube Player - Loaded",
+    "aria-live": "polite",
+    "role": interactive ? "button" : "application",
+    "tabindex": interactive ? 0 : void 0,
+    "style": {
+      cursor: "pointer",
+      position: "relative",
+      backgroundColor: "black",
+      width: "100%",
+      aspectRatio: props.ratio
+    },
+    ...trigger instanceof Promise ? trigger.ssrAttrs || {} : {}
+  });
+});
+const fallbackPlaceHolder = computed(() => `https://i.ytimg.com/vi/${props.videoId}/hqdefault.jpg`);
+const placeholder = computed(() => `https://i.ytimg.com/${props.webp ? "vi_webp" : "vi"}/${props.videoId}/${props.thumbnailSize}.${props.webp ? "webp" : "jpg"}`);
+const isFallbackPlaceHolder = ref(false);
+if (import.meta.server) {
+  useHead({
+    link: [
+      {
+        key: "nuxt-script-youtube-img-preconnect",
+        rel: props.aboveTheFold ? "preconnect" : "dns-prefetch",
+        href: "https://i.ytimg.com"
+      },
+      props.aboveTheFold ? {
+        key: `nuxt-script-youtube-img-preload-${props.videoId}`,
+        rel: "preload",
+        as: "image",
+        href: placeholder.value
+      } : {}
+    ]
+  });
+}
+const placeholderAttrs = computed(() => {
+  return defu(props.placeholderAttrs, {
+    src: isFallbackPlaceHolder.value ? fallbackPlaceHolder.value : placeholder.value,
+    alt: "Play video",
+    loading: props.aboveTheFold ? "eager" : "lazy",
+    // @ts-expect-error untyped
+    fetchpriority: props.aboveTheFold ? "high" : void 0,
+    style: {
+      width: "100%",
+      objectFit: props.placeholderObjectFit,
+      height: "100%"
+    },
+    onLoad(payload) {
+      const img = payload.target;
+      if (img.naturalWidth === 120 && img.naturalHeight === 90) {
+        isFallbackPlaceHolder.value = true;
+      }
+    }
+  });
+});
+</script>
+
+<template>
+  <div ref="rootEl" v-bind="rootAttrs" @keydown="keyboardTriggerable ? onPlaceholderKeydown($event) : void 0">
+    <div ref="youtubeEl" style="width: 100%; height: 100%; position: absolute; top: 0; left: 0;" />
+    <slot v-if="!ready" :placeholder="placeholder" name="placeholder">
+      <img v-bind="placeholderAttrs">
+    </slot>
+    <slot v-if="status === 'loading'" name="loading">
+      <ScriptAriaLoadingIndicator />
+    </slot>
+    <slot v-if="status === 'awaitingLoad'" name="awaitingLoad" />
+    <slot v-else-if="status === 'error'" name="error" />
+    <slot />
+  </div>
+</template>

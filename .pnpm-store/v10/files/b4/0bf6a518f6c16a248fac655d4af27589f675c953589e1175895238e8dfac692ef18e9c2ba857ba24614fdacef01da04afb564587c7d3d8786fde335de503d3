@@ -1,0 +1,7 @@
+type CreateKeyArgs = {
+    ipAddress: string;
+    prefix?: string;
+    path?: string;
+};
+declare const createKey: (options: CreateKeyArgs) => string;
+export default createKey;

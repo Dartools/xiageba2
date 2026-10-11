@@ -1,0 +1,237 @@
+import { tokenize } from 'rangi';
+import { dark as defaultDark, defaultTheme } from 'rangi/themes';
+import { defineComarkPlugin } from "../utils/helpers.js";
+import { visitAsync } from "../utils/index.js";
+import comarkLanguage from "../utils/comark.rangiLanguage.js";
+/**
+ * The Comark grammar, under every name a Comark fence may be written with.
+ *
+ * `md` and `markdown` are included on purpose: Comark is a superset of
+ * Markdown, so highlighting a plain markdown fence with it is strictly more
+ * information — and it mirrors the `md`/`markdown`/`comark` → `mdc` aliases the
+ * Shiki plugin registers. Pass your own `languages: { md: … }` to override.
+ */
+export const comarkLanguages = {
+    comark: comarkLanguage,
+    mdc: comarkLanguage,
+    md: comarkLanguage,
+    markdown: comarkLanguage,
+};
+/**
+ * Resolve a fence language string for rangi.
+ *
+ * Missing/empty fence info → `plain`. Everything else is passed through —
+ * rangi already knows common aliases (`javascript`, `typescript`, `python`, …)
+ * and falls back to plain text for unknowns.
+ */
+export function resolveRangiLanguage(language) {
+    if (!language)
+        return 'plain';
+    const raw = language.trim().toLowerCase();
+    return raw || 'plain';
+}
+/**
+ * Merge the Comark grammars with any custom ones, custom winning.
+ */
+function resolveLanguages(languages) {
+    return languages ? { ...comarkLanguages, ...languages } : comarkLanguages;
+}
+/**
+ * Tokenize source using `rangi`.
+ *
+ * {@link comarkLanguages} is always registered, so `comark`, `mdc`, `md` and
+ * `markdown` fences are highlighted with the Comark grammar.
+ */
+export function tokenizeCode(code, language, languages) {
+    return tokenize(code, {
+        lang: language,
+        languages: resolveLanguages(languages),
+    });
+}
+function isThemePair(theme) {
+    return !!theme.light && !!theme.dark;
+}
+function tokenColor(theme, type) {
+    if (!theme || !type)
+        return undefined;
+    return theme.tokens?.[type] || theme.fg;
+}
+/**
+ * Build inline style for a token, dual-theme aware.
+ */
+function tokenStyle(type, light, dark, dual) {
+    if (!type || (!light && !dark))
+        return undefined;
+    const lightColor = tokenColor(light, type);
+    const darkColor = tokenColor(dark, type);
+    const styles = [];
+    if (lightColor)
+        styles.push(`color:${lightColor}`);
+    if (dual && darkColor)
+        styles.push(`--shiki-dark:${darkColor}`);
+    // Single dark-only theme
+    if (!light && darkColor)
+        styles.push(`color:${darkColor}`);
+    return styles.length ? styles.join(';') : undefined;
+}
+/**
+ * Group a flat token stream into line-aligned Node arrays.
+ * Newline characters may appear inside a token; they are split so each line
+ * can be wrapped independently (and receive `.highlight`).
+ */
+function tokensToLines(tokens, opts) {
+    const lines = [[]];
+    const pushToken = (text, type) => {
+        if (!text)
+            return;
+        const line = lines[lines.length - 1];
+        if (!type) {
+            const last = line[line.length - 1];
+            if (typeof last === 'string') {
+                line[line.length - 1] = last + text;
+            }
+            else {
+                line.push(text);
+            }
+            return;
+        }
+        const attrs = {
+            // `shj-*` matches rangi docs; `shj-syn-*` stays compatible with older stylesheets
+            class: `shj-syn-${type} shj-${type}`,
+        };
+        const style = tokenStyle(type, opts.light, opts.dark, opts.dual);
+        if (style)
+            attrs.style = style;
+        line.push(['span', attrs, text]);
+    };
+    for (const token of tokens) {
+        const parts = token.text.split('\n');
+        for (let i = 0; i < parts.length; i++) {
+            if (i > 0)
+                lines.push([]);
+            pushToken(parts[i], token.type);
+        }
+    }
+    return lines;
+}
+/**
+ * Build code children from tokenized lines.
+ */
+function buildCodeChildren(lines, highlights, wrapLines) {
+    const highlightSet = Array.isArray(highlights) && highlights.length > 0 ? new Set(highlights) : null;
+    const children = [];
+    for (let i = 0; i < lines.length; i++) {
+        const lineNodes = lines[i];
+        const lineNumber = i + 1;
+        const isHighlighted = highlightSet !== null && highlightSet.has(lineNumber);
+        if (wrapLines) {
+            const className = isHighlighted ? 'line highlight' : 'line';
+            // eslint-disable-next-line unicorn/no-new-array -- pre-allocated for perf
+            const lineEl = new Array(lineNodes.length + 2);
+            lineEl[0] = 'span';
+            lineEl[1] = {
+                class: className,
+                style: isHighlighted ? 'display: inline-block' : 'display: inline',
+            };
+            for (let j = 0; j < lineNodes.length; j++)
+                lineEl[j + 2] = lineNodes[j];
+            children.push(lineEl);
+        }
+        else if (lineNodes.length === 0) {
+            // empty
+        }
+        else if (lineNodes.length === 1) {
+            children.push(lineNodes[0]);
+        }
+        else {
+            children.push(...lineNodes);
+        }
+        if (i < lines.length - 1)
+            children.push('\n');
+    }
+    return children;
+}
+function buildPreStyle(light, dark, dual) {
+    if (!light && !dark)
+        return undefined;
+    const styles = [];
+    const primary = light || dark;
+    if (primary.bg)
+        styles.push(`background-color:${primary.bg}`);
+    if (primary.fg)
+        styles.push(`color:${primary.fg}`);
+    if (dual && dark) {
+        if (dark.bg)
+            styles.push(`--shiki-dark-bg:${dark.bg}`);
+        if (dark.fg)
+            styles.push(`--shiki-dark:${dark.fg}`);
+    }
+    return styles.length ? styles.join(';') : undefined;
+}
+/**
+ * Apply rangi syntax highlighting to every `<pre><code>` block.
+ */
+export async function rangiCodeBlocks(tree, options = {}) {
+    const { lineNumbers = false, classPrefix = 'shj', languages, theme, preStyles = false } = options;
+    let light;
+    let dark;
+    let dual = false;
+    const resolved = theme || { light: defaultTheme, dark: defaultDark };
+    if (isThemePair(resolved)) {
+        light = resolved.light;
+        dark = resolved.dark;
+        dual = light.name !== dark.name;
+    }
+    else if (resolved.scheme === 'dark') {
+        dark = resolved;
+        light = resolved;
+    }
+    else {
+        light = resolved;
+        dark = resolved;
+    }
+    await visitAsync(tree, (node) => Array.isArray(node) &&
+        node[0] === 'pre' &&
+        Array.isArray(node[2]) &&
+        node[2][0] === 'code' &&
+        typeof node[2][2] === 'string', async (node) => {
+        const pre = node;
+        const attrs = (pre[1] || {});
+        const codeEl = pre[2];
+        const code = codeEl[2];
+        const lang = resolveRangiLanguage(attrs.language);
+        let codeChildren;
+        try {
+            const tokens = tokenizeCode(code, lang, languages);
+            const lines = tokensToLines(tokens, { light, dark, dual });
+            codeChildren = buildCodeChildren(lines, attrs.highlights, lineNumbers);
+        }
+        catch {
+            codeChildren = [code];
+        }
+        const userClass = typeof attrs.class === 'string' ? attrs.class.trim() : '';
+        // `shiki` so dual-theme CSS hooks shared with the Shiki plugin work
+        const highlighterClass = `${classPrefix} shiki shj-lang-${lang}`;
+        const classStr = userClass ? `${highlighterClass} . ${userClass}` : highlighterClass;
+        const newPreAttrs = { ...attrs, class: classStr };
+        if (preStyles) {
+            const style = buildPreStyle(light, dark, dual);
+            if (style)
+                newPreAttrs.style = style;
+        }
+        // eslint-disable-next-line unicorn/no-new-array -- pre-allocated for perf
+        const newCode = new Array(codeChildren.length + 2);
+        newCode[0] = 'code';
+        newCode[1] = codeEl[1] || {};
+        for (let i = 0; i < codeChildren.length; i++)
+            newCode[i + 2] = codeChildren[i];
+        return ['pre', newPreAttrs, newCode];
+    });
+    return tree;
+}
+export default defineComarkPlugin((options = {}) => ({
+    name: 'rangi',
+    async post(state) {
+        state.tree = await rangiCodeBlocks(state.tree, options);
+    },
+}));

@@ -1,0 +1,22 @@
+type __VLS_Props = {
+    /** Email address — sent to your server proxy for hashing, not sent to Gravatar */
+    email?: string;
+    /** Pre-computed SHA256 hash of the email */
+    hash?: string;
+    /** Avatar size in pixels */
+    size?: number;
+    /** Default avatar style when no Gravatar exists */
+    default?: string;
+    /** Content rating filter */
+    rating?: string;
+    /** Enable hovercards on hover */
+    hovercards?: boolean;
+};
+declare const __VLS_export: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<__VLS_Props> & Readonly<{}>, {
+    default: string;
+    size: number;
+    rating: string;
+    hovercards: boolean;
+}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+declare const _default: typeof __VLS_export;
+export default _default;

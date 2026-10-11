@@ -1,0 +1,36 @@
+import type { RegistryScriptInput } from '#nuxt-scripts/types';
+import { SegmentOptions } from './schemas.js';
+export { SegmentOptions };
+export type SegmentInput = RegistryScriptInput<typeof SegmentOptions>;
+interface AnalyticsApi {
+    track: (event: string, properties?: Record<string, any>) => void;
+    page: (name?: string, properties?: Record<string, any>) => void;
+    identify: (userId: string, traits?: Record<string, any>, options?: Record<string, any>) => void;
+    group: (groupId: string, traits?: Record<string, any>, options?: Record<string, any>) => void;
+    alias: (userId: string, previousId: string, options?: Record<string, any>) => void;
+    reset: () => void;
+    /**
+     * @internal
+     */
+    methods: string[];
+    /**
+     * @internal
+     */
+    factory: (method: string) => (...args: any[]) => AnalyticsApi;
+    /**
+     * @internal
+     */
+    push: (args: any[]) => void;
+}
+export type SegmentApi = Pick<AnalyticsApi, 'track' | 'page' | 'identify' | 'group' | 'alias' | 'reset'>;
+declare global {
+    interface Window {
+        track: SegmentApi['track'];
+        page: SegmentApi['page'];
+        identify: SegmentApi['identify'];
+        group: SegmentApi['group'];
+        alias: SegmentApi['alias'];
+        reset: SegmentApi['reset'];
+    }
+}
+export declare function useScriptSegment<T extends SegmentApi>(_options?: SegmentInput): import("#nuxt-scripts/types").UseScriptContext<T>;

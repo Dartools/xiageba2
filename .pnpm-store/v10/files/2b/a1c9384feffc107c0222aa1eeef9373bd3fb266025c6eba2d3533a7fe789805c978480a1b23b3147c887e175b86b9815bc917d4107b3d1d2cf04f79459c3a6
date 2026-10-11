@@ -1,0 +1,20 @@
+import { joinURL } from "ufo";
+import { useRegistryScript } from "../utils.js";
+import { IntercomOptions } from "./schemas.js";
+export { IntercomOptions };
+export function useScriptIntercom(_options) {
+  return useRegistryScript("intercom", (options) => ({
+    scriptInput: {
+      src: joinURL(`https://widget.intercom.io/widget`, options?.app_id || "")
+    },
+    schema: import.meta.dev ? IntercomOptions : void 0,
+    scriptOptions: {
+      use() {
+        return { Intercom: window.Intercom };
+      }
+    },
+    clientInit: import.meta.server ? void 0 : () => {
+      window.intercomSettings = options;
+    }
+  }), _options);
+}

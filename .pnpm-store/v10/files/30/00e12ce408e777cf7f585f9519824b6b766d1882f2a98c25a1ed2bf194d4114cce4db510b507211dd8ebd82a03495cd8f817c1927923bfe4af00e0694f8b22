@@ -1,0 +1,28 @@
+import type { UseScriptInput } from '@unhead/vue';
+import type { ObjectSchema, UnionSchema } from 'valibot';
+import type { EmptyOptionsSchema, InferIfSchema, NuxtUseScriptOptions, RegistryScriptInput, RegistryScriptKey, ScriptRegistry, UseFunctionType, UseScriptContext } from '#nuxt-scripts/types';
+import type { GcmConsentContract } from './registry/_gcm-consent.js';
+export type MaybePromise<T> = Promise<T> | T;
+type OptionsFn<O> = (options: InferIfSchema<O>, ctx: {
+    scriptInput?: UseScriptInput & {
+        src?: string;
+    };
+}) => ({
+    scriptInput?: UseScriptInput;
+    scriptOptions?: NuxtUseScriptOptions;
+    schema?: O extends ObjectSchema<any, any> | UnionSchema<any, any> ? O : undefined;
+    clientInit?: (ctx?: {
+        signal: AbortSignal;
+    }) => any | Promise<any>;
+    scriptMode?: 'external' | 'npm';
+    /**
+     * Opt-in: this script consumes GCMv2 Consent Mode. `useRegistryScript` auto-attaches
+     * a `consent: { default, update }` API + dev validation against the canonical schema.
+     */
+    gcmConsent?: GcmConsentContract;
+});
+export declare function scriptRuntimeConfig<T extends RegistryScriptKey>(key: T): ScriptRegistry[T];
+export declare function scriptsPrefix(): string;
+export declare function requireRegistryEndpoint(componentName: string, registryKey: string): void;
+export declare function useRegistryScript<T extends Record<string | symbol, any>, O = EmptyOptionsSchema>(registryKey: keyof ScriptRegistry | string, optionsFn: OptionsFn<O>, _userOptions?: RegistryScriptInput<O>): UseScriptContext<UseFunctionType<NuxtUseScriptOptions<T>, T>>;
+export {};

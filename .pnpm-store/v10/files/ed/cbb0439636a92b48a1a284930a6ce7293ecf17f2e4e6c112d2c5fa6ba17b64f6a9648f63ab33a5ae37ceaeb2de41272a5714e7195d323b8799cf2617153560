@@ -1,0 +1,77 @@
+import type { RegistryScriptInput, UseScriptContext } from '#nuxt-scripts/types';
+import { CalendlyOptions } from './schemas.js';
+export { CalendlyOptions };
+export type CalendlyInput = RegistryScriptInput<typeof CalendlyOptions, true, false>;
+interface CalendlyPrefill {
+    name?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    customAnswers?: Record<string, string>;
+}
+interface CalendlyUtm {
+    utmCampaign?: string;
+    utmSource?: string;
+    utmMedium?: string;
+    utmContent?: string;
+    utmTerm?: string;
+}
+interface CalendlyPageSettings {
+    backgroundColor?: string;
+    hideEventTypeDetails?: boolean;
+    hideLandingPageDetails?: boolean;
+    hideGdprBanner?: boolean;
+    primaryColor?: string;
+    textColor?: string;
+}
+export interface CalendlyInlineWidgetOptions {
+    url: string;
+    parentElement: HTMLElement;
+    prefill?: CalendlyPrefill;
+    utm?: CalendlyUtm;
+    pageSettings?: CalendlyPageSettings;
+}
+export interface CalendlyPopupWidgetOptions {
+    url: string;
+    rootElement?: HTMLElement;
+    text?: string;
+    color?: string;
+    textColor?: string;
+    branding?: boolean;
+    prefill?: CalendlyPrefill;
+    utm?: CalendlyUtm;
+    pageSettings?: CalendlyPageSettings;
+}
+export interface CalendlyBadgeWidgetOptions {
+    url: string;
+    text?: string;
+    color?: string;
+    textColor?: string;
+    branding?: boolean;
+    prefill?: CalendlyPrefill;
+    utm?: CalendlyUtm;
+    pageSettings?: CalendlyPageSettings;
+}
+export interface CalendlyApi {
+    Calendly: {
+        initInlineWidget: (options: CalendlyInlineWidgetOptions) => void;
+        initPopupWidget: (options: CalendlyPopupWidgetOptions) => void;
+        initBadgeWidget: (options: CalendlyBadgeWidgetOptions) => void;
+        showPopupWidget: (url: string) => void;
+        closePopupWidget: () => void;
+        initPopupWidgetWithText: (options: CalendlyPopupWidgetOptions) => void;
+        q?: unknown[];
+    };
+}
+declare global {
+    interface Window {
+        Calendly: CalendlyApi['Calendly'];
+    }
+}
+/**
+ * Load the Calendly widget script and expose a typed `Calendly` proxy for
+ * inline, popup, and badge bookings.
+ *
+ * @see https://help.calendly.com/hc/en-us/articles/223147027
+ */
+export declare function useScriptCalendly<T extends CalendlyApi>(_options?: CalendlyInput): UseScriptContext<T>;

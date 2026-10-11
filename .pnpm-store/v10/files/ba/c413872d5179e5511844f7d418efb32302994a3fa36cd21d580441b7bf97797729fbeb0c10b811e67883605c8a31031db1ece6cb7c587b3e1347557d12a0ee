@@ -1,0 +1,31 @@
+import { indent } from "../../../utils/index.js";
+import { comarkAttributes, userBlockAttrs } from "../attributes.js";
+export async function ol(node, state) {
+    const children = node.slice(2);
+    // `start` is carried by the native numbering; IMPLICIT_ATTRS drops it from user attrs.
+    const start = Number(node[1].start);
+    const order = Number.isInteger(start) && start >= 1 ? start : 1;
+    const revert = state.applyContext({ list: true, order, listIndent: 3 });
+    let result = '';
+    for (const child of children) {
+        result += await state.one(child, state);
+    }
+    result = result.trim();
+    state.applyContext(revert);
+    // ol with user attrs round-trips via `::ol{attrs}\n1. …\n::` — the native
+    // markdown list syntax has no slot for list-level attrs.
+    const attrs = comarkAttributes(userBlockAttrs('ol', node[1]));
+    if (attrs) {
+        if (revert.list) {
+            return '\n' + indent(`::ol${attrs}\n${result}\n::`, { width: revert.listIndent || 2 });
+        }
+        return `::ol${attrs}\n${result}\n::` + state.context.blockSeparator;
+    }
+    if (revert.list) {
+        result = '\n' + indent(result, { width: revert.listIndent || 2 });
+    }
+    else {
+        result = result + state.context.blockSeparator;
+    }
+    return result;
+}

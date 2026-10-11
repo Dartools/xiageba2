@@ -1,0 +1,57 @@
+import { matchesPattern, getPatternSpecificity, validatePattern } from "./patternMatcher.js";
+export function extractRoutePaths(routes) {
+  return routes.map((route) => {
+    if (typeof route === "string") {
+      return route;
+    }
+    return route.path;
+  });
+}
+export function findBestMatchingRoute(path, config) {
+  const routeConfigs = config.routes || [];
+  if (routeConfigs.length === 0) {
+    return { path: "" };
+  }
+  const exactMatches = routeConfigs.filter((route) => {
+    if (typeof route === "string") {
+      return route === path;
+    }
+    return !route.pattern && route.path === path;
+  });
+  if (exactMatches.length > 0) {
+    const match = exactMatches[0];
+    return typeof match === "string" ? { path: match } : match;
+  }
+  const patternMatches = routeConfigs.filter((route) => {
+    if (typeof route === "string") return false;
+    return route.pattern === true && validatePattern(route.path);
+  }).filter((route) => matchesPattern(route.path, path)).sort((a, b) => getPatternSpecificity(b.path) - getPatternSpecificity(a.path));
+  if (patternMatches.length > 0) {
+    return patternMatches[0];
+  }
+  const prefixMatches = routeConfigs.filter((route) => {
+    const routePath = typeof route === "string" ? route : route.path;
+    return path.startsWith(routePath) && (path.length === routePath.length || path[routePath.length] === "/");
+  });
+  if (prefixMatches.length > 0) {
+    const bestPrefix = prefixMatches.reduce((prev, curr) => {
+      const prevPath = typeof prev === "string" ? prev : prev.path;
+      const currPath = typeof curr === "string" ? curr : curr.path;
+      return currPath.length > prevPath.length ? curr : prev;
+    });
+    return typeof bestPrefix === "string" ? { path: bestPrefix } : bestPrefix;
+  }
+  return null;
+}
+export function getRouteLimit(path, config, matchingRoute) {
+  if (!matchingRoute) {
+    matchingRoute = findBestMatchingRoute(path, config);
+  }
+  if (!matchingRoute) {
+    return config.limit;
+  }
+  return Object.assign({}, config.limit, matchingRoute);
+}
+export function hasRouteLimit(path, config) {
+  return findBestMatchingRoute(path, config) !== null;
+}

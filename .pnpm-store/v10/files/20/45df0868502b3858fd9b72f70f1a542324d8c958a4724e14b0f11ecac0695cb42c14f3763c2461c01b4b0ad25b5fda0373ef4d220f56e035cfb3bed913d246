@@ -1,0 +1,55 @@
+import { createError, defineEventHandler, getQuery, setHeader } from "#nuxt-scripts/h3";
+import { useRuntimeConfig } from "#nuxt-scripts/nitro";
+import { createCachedJsonFetch, isSafeHttpsUrl } from "./utils/cached-upstream.js";
+import { rewriteTweetImages } from "./utils/embed-rewriters.js";
+import { withSigning } from "./utils/withSigning.js";
+const TWEET_ID_RE = /^\d+$/;
+const EMBED_X_SUFFIX_RE = /\/embed\/x$/;
+const TWEET_ID_FROM_URL_RE = /[?&]id=(\d+)/;
+const cachedTweetFetch = createCachedJsonFetch(
+  "nuxt-scripts-x-tweet",
+  600,
+  (url) => {
+    const match = url.match(TWEET_ID_FROM_URL_RE);
+    return match?.[1] || url;
+  },
+  {
+    allowUrl: (url) => isSafeHttpsUrl(url) && url.hostname === "cdn.syndication.twimg.com",
+    contentTypePrefixes: ["application/json"]
+  }
+);
+export default withSigning(defineEventHandler(async (event) => {
+  const query = getQuery(event);
+  const tweetId = query.id;
+  if (!tweetId || !TWEET_ID_RE.test(tweetId)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Valid Tweet ID is required"
+    });
+  }
+  const randomToken = Array.from(Array.from({ length: 11 }), () => (Math.random() * 36).toString(36)[2]).join("");
+  const params = new URLSearchParams({ id: tweetId, token: randomToken });
+  const tweetRaw = await cachedTweetFetch(
+    `https://cdn.syndication.twimg.com/tweet-result?${params.toString()}`,
+    {
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+      }
+    }
+  ).catch((error) => {
+    throw createError({
+      statusCode: error.statusCode || 500,
+      statusMessage: error.statusMessage || "Failed to fetch tweet"
+    });
+  });
+  const tweetData = structuredClone(tweetRaw);
+  const handlerPath = event.path?.split("?")[0] || "";
+  const prefix = handlerPath.replace(EMBED_X_SUFFIX_RE, "") || "/_scripts";
+  const imagePath = `${prefix}/embed/x-image`;
+  const secret = useRuntimeConfig()["nuxt-scripts"]?.proxySecret;
+  rewriteTweetImages(tweetData, imagePath, secret);
+  setHeader(event, "Content-Type", "application/json");
+  setHeader(event, "Cache-Control", "public, max-age=600, s-maxage=600");
+  return tweetData;
+}));

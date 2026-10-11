@@ -1,0 +1,12 @@
+export declare const unsafeTags: string[];
+export declare const unsafeAttributes: string[];
+export declare const unsafeLinkPrefix: string[];
+export interface PropsValidationOptions {
+    allowedLinkPrefixes?: string[];
+    allowedImagePrefixes?: string[];
+    allowedProtocols?: string[];
+    defaultOrigin?: string;
+    allowDataImages?: boolean;
+}
+export declare function validateProp(attribute: string, value: string, options?: PropsValidationOptions): string | false;
+export declare function validateProps(type: string, props?: Record<string, any>, options?: PropsValidationOptions): Record<string, any>;

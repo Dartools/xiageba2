@@ -1,0 +1,1282 @@
+export declare const gcmConsentState: import("valibot").ObjectSchema<{
+    readonly ad_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+    readonly ad_user_data: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+    readonly ad_personalization: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+    readonly analytics_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+    readonly functionality_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+    readonly personalization_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+    readonly security_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+    readonly wait_for_update: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    readonly region: import("valibot").OptionalSchema<import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>, undefined>;
+}, undefined>;
+export declare const AhrefsAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Ahrefs Web Analytics project key. Set as the `data-key` attribute
+     * on the loaded `analytics.js` script tag.
+     * @see https://ahrefs.com/web-analytics
+     */
+    readonly key: import("valibot").SchemaWithPipe<readonly [import("valibot").StringSchema<undefined>, import("valibot").MinLengthAction<string, 1, undefined>]>;
+}, undefined>;
+export declare const BlueskyEmbedOptions: import("valibot").ObjectSchema<{
+    /**
+     * The Bluesky post URL to embed.
+     * @example 'https://bsky.app/profile/bsky.app/post/3mgnwwvj3u22a'
+     */
+    readonly postUrl: import("valibot").StringSchema<undefined>;
+    /**
+     * Custom API endpoint for fetching post data.
+     * @default '/_scripts/embed/bluesky'
+     */
+    readonly apiEndpoint: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Custom image proxy endpoint.
+     * @default '/_scripts/embed/bluesky-image'
+     */
+    readonly imageProxyEndpoint: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const ClarityOptions: import("valibot").ObjectSchema<{
+    /**
+     * The Clarity token.
+     * @see https://learn.microsoft.com/en-us/clarity/setup-clarity
+     */
+    readonly id: import("valibot").SchemaWithPipe<readonly [import("valibot").StringSchema<undefined>, import("valibot").MinLengthAction<string, 10, undefined>]>;
+    /**
+     * Default consent state applied before Clarity starts.
+     * - `boolean` - enable / disable cookies.
+     * - `Record<string, string>` - advanced consent vector (see Clarity docs).
+     * @see https://learn.microsoft.com/en-us/clarity/setup-and-installation/cookie-consent
+     */
+    readonly defaultConsent: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").BooleanSchema<undefined>, import("valibot").RecordSchema<import("valibot").StringSchema<undefined>, import("valibot").StringSchema<undefined>, undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const CloudflareWebAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * The Cloudflare Web Analytics token.
+     * @see https://developers.cloudflare.com/analytics/web-analytics/get-started/
+     */
+    readonly token: import("valibot").SchemaWithPipe<readonly [import("valibot").StringSchema<undefined>, import("valibot").MinLengthAction<string, 32, undefined>]>;
+    /**
+     * Cloudflare Web Analytics enables measuring SPAs automatically by overriding the History API's pushState function
+     * and listening to the onpopstate. Hash-based router is not supported.
+     *
+     * @default true
+     * @see https://developers.cloudflare.com/analytics/web-analytics/get-started/#spa-tracking
+     */
+    readonly spa: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+}, undefined>;
+export declare const CrispOptions: import("valibot").ObjectSchema<{
+    /**
+     * The Crisp ID.
+     */
+    readonly id: import("valibot").StringSchema<undefined>;
+    /**
+     * Extra configuration options. Used to configure the locale.
+     * Same as CRISP_RUNTIME_CONFIG.
+     * @see https://docs.crisp.chat/guides/chatbox-sdks/web-sdk/language-customization/
+     */
+    readonly runtimeConfig: import("valibot").OptionalSchema<import("valibot").ObjectSchema<{
+        readonly locale: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    }, undefined>, undefined>;
+    /**
+     * Associated a session, equivalent to using CRISP_TOKEN_ID variable.
+     * Same as CRISP_TOKEN_ID.
+     * @see https://docs.crisp.chat/guides/chatbox-sdks/web-sdk/session-continuity/
+     */
+    readonly tokenId: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Restrict the domain that the Crisp cookie is set on.
+     * Same as CRISP_COOKIE_DOMAIN.
+     * @see https://docs.crisp.chat/guides/chatbox-sdks/web-sdk/cookie-policies/
+     */
+    readonly cookieDomain: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The cookie expiry in seconds.
+     * Same as CRISP_COOKIE_EXPIRATION.
+     * @see https://docs.crisp.chat/guides/chatbox-sdks/web-sdk/cookie-policies/#change-cookie-expiration-date
+     */
+    readonly cookieExpiry: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+}, undefined>;
+/**
+ * @see https://www.databuddy.cc/docs/sdk
+ */
+export declare const DatabuddyAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Databuddy client ID.
+     */
+    readonly clientId: import("valibot").StringSchema<undefined>;
+    /**
+     * Custom script URL for the Databuddy SDK.
+     * @default 'https://cdn.databuddy.cc/databuddy.js'
+     */
+    readonly scriptUrl: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Custom API URL for sending analytics data.
+     * @default 'https://basket.databuddy.cc'
+     */
+    readonly apiUrl: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Disable all tracking when set to `true`.
+     */
+    readonly disabled: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track screen/page views automatically.
+     * @default true
+     * @see https://www.databuddy.cc/docs/sdk#track-screen-views
+     */
+    readonly trackScreenViews: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track page performance metrics.
+     * @default true
+     * @see https://www.databuddy.cc/docs/sdk#track-performance
+     */
+    readonly trackPerformance: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track user sessions.
+     * @default true
+     * @see https://www.databuddy.cc/docs/sdk#track-sessions
+     */
+    readonly trackSessions: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track Web Vitals (LCP, FID, CLS, etc.).
+     */
+    readonly trackWebVitals: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track JavaScript errors.
+     */
+    readonly trackErrors: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track outgoing link clicks.
+     */
+    readonly trackOutgoingLinks: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track scroll depth.
+     */
+    readonly trackScrollDepth: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track user engagement time.
+     */
+    readonly trackEngagement: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track user interactions (clicks, form submissions, etc.).
+     */
+    readonly trackInteractions: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track element attributes for detailed interaction context.
+     */
+    readonly trackAttributes: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track hash changes in the URL.
+     */
+    readonly trackHashChanges: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track exit intent behavior.
+     */
+    readonly trackExitIntent: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track bounce rate metrics.
+     */
+    readonly trackBounceRate: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Enable event batching for better performance.
+     */
+    readonly enableBatching: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Maximum number of events per batch.
+     */
+    readonly batchSize: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Timeout (in ms) before flushing a batch.
+     */
+    readonly batchTimeout: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Enable automatic retries for failed requests.
+     */
+    readonly enableRetries: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Maximum number of retry attempts.
+     */
+    readonly maxRetries: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Initial delay (in ms) before the first retry.
+     */
+    readonly initialRetryDelay: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Sampling rate (0 to 1). Set to `0.5` to track ~50% of sessions.
+     */
+    readonly samplingRate: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Custom SDK identifier.
+     */
+    readonly sdk: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Custom SDK version string.
+     */
+    readonly sdkVersion: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Enable observability/monitoring features.
+     */
+    readonly enableObservability: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * The service name for observability reporting.
+     */
+    readonly observabilityService: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The environment name for observability (e.g., `'production'`, `'staging'`).
+     */
+    readonly observabilityEnvironment: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The version string for observability reporting.
+     */
+    readonly observabilityVersion: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Enable console logging for debugging.
+     */
+    readonly enableLogging: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Enable request tracing.
+     */
+    readonly enableTracing: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Enable error tracking via observability.
+     */
+    readonly enableErrorTracking: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+}, undefined>;
+export declare const FathomAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * The Fathom Analytics site ID.
+     * @see https://usefathom.com/docs/script/script-settings
+     */
+    readonly site: import("valibot").StringSchema<undefined>;
+    /**
+     * The Fathom Analytics tracking mode.
+     * @default 'auto'
+     */
+    readonly spa: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"auto", undefined>, import("valibot").LiteralSchema<"history", undefined>, import("valibot").LiteralSchema<"hash", undefined>], undefined>, undefined>;
+    /**
+     * Automatically track page views.
+     * @default true
+     */
+    readonly auto: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Enable canonical URL tracking.
+     * @default true
+     */
+    readonly canonical: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Honor Do Not Track requests.
+     * @default false
+     */
+    readonly honorDnt: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+}, undefined>;
+export declare const GoogleAdsenseOptions: import("valibot").ObjectSchema<{
+    /**
+     * The Google Adsense ID.
+     * @example 'ca-pub-XXXXXXXXXXXXXXXX'
+     */
+    readonly client: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Enable or disable Auto Ads.
+     * @default false
+     * @see https://support.google.com/adsense/answer/9261805
+     */
+    readonly autoAds: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+}, undefined>;
+export declare const GoogleAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * The GA4 measurement ID.
+     * @example 'G-XXXXXXXX'
+     * @see https://developers.google.com/analytics/devguides/collection/gtagjs
+     */
+    readonly id: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Global name for the dataLayer variable.
+     * @default 'dataLayer'
+     * @see https://developers.google.com/analytics/devguides/collection/gtagjs/setting-up-gtag#rename_the_data_layer
+     */
+    readonly l: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Default GCMv2 consent state(s) fired as `gtag('consent', 'default', state)` before
+     * `gtag('js', ...)`. Pass an array to fire multiple defaults — for example, different
+     * defaults per `region` (more specific regions override broader ones at runtime).
+     * @see https://developers.google.com/tag-platform/security/guides/consent?consentmode=advanced#region-specific-behavior
+     */
+    readonly defaultConsent: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").ObjectSchema<{
+        readonly ad_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly ad_user_data: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly ad_personalization: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly analytics_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly functionality_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly personalization_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly security_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly wait_for_update: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+        readonly region: import("valibot").OptionalSchema<import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>, undefined>;
+    }, undefined>, import("valibot").ArraySchema<import("valibot").ObjectSchema<{
+        readonly ad_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly ad_user_data: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly ad_personalization: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly analytics_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly functionality_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly personalization_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly security_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly wait_for_update: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+        readonly region: import("valibot").OptionalSchema<import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>, undefined>;
+    }, undefined>, undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const GoogleMapsOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Google Maps API key.
+     */
+    readonly apiKey: import("valibot").StringSchema<undefined>;
+    /**
+     * The Google Maps libraries to load.
+     * @default ['places']
+     * @see https://developers.google.com/maps/documentation/javascript/libraries
+     */
+    readonly libraries: import("valibot").OptionalSchema<import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>, undefined>;
+    /**
+     * The language code for the map UI and geocoding results.
+     * @see https://developers.google.com/maps/faq#languagesupport
+     */
+    readonly language: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The region code to bias geocoding results.
+     * @see https://developers.google.com/maps/documentation/javascript/localization#Region
+     */
+    readonly region: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The Google Maps JS API version to load.
+     * @default 'weekly'
+     * @see https://developers.google.com/maps/documentation/javascript/versions
+     */
+    readonly v: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"weekly", undefined>, import("valibot").LiteralSchema<"quarterly", undefined>, import("valibot").LiteralSchema<"beta", undefined>, import("valibot").LiteralSchema<"alpha", undefined>, import("valibot").StringSchema<undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const GoogleRecaptchaOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your reCAPTCHA site key.
+     * @see https://developers.google.com/recaptcha/docs/display#render_param
+     */
+    readonly siteKey: import("valibot").StringSchema<undefined>;
+    /**
+     * Use the Enterprise version of reCAPTCHA (enterprise.js instead of api.js).
+     * @see https://cloud.google.com/recaptcha-enterprise/docs/introduction
+     */
+    readonly enterprise: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Use recaptcha.net instead of google.com domain. Useful for regions where google.com is blocked.
+     */
+    readonly recaptchaNet: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Language code for the reCAPTCHA widget.
+     * @see https://developers.google.com/recaptcha/docs/language
+     */
+    readonly hl: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const GoogleSignInOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Google API client ID.
+     * @example 'XXXXXXXXXXXX-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX.apps.googleusercontent.com'
+     * @see https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid
+     */
+    readonly clientId: import("valibot").StringSchema<undefined>;
+    /**
+     * Auto-select credentials when only one Google account is available.
+     * @see https://developers.google.com/identity/gsi/web/reference/js-reference#auto_select
+     */
+    readonly autoSelect: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * The context text for the One Tap prompt.
+     * @see https://developers.google.com/identity/gsi/web/reference/js-reference#context
+     */
+    readonly context: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"signin", undefined>, import("valibot").LiteralSchema<"signup", undefined>, import("valibot").LiteralSchema<"use", undefined>], undefined>, undefined>;
+    /**
+     * Enable FedCM (Federated Credential Management) API support. Mandatory from August 2025.
+     * @see https://developers.google.com/identity/gsi/web/guides/fedcm-migration
+     */
+    readonly useFedcmForPrompt: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Cancel the One Tap prompt if the user clicks outside.
+     * @default true
+     * @see https://developers.google.com/identity/gsi/web/reference/js-reference#cancel_on_tap_outside
+     */
+    readonly cancelOnTapOutside: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * The UX mode for the sign-in flow.
+     * @see https://developers.google.com/identity/gsi/web/reference/js-reference#ux_mode
+     */
+    readonly uxMode: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"popup", undefined>, import("valibot").LiteralSchema<"redirect", undefined>], undefined>, undefined>;
+    /**
+     * The URI to redirect to after sign-in when using redirect UX mode.
+     * @see https://developers.google.com/identity/gsi/web/reference/js-reference#login_uri
+     */
+    readonly loginUri: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Enable Intelligent Tracking Prevention (ITP) support for Safari.
+     * @see https://developers.google.com/identity/gsi/web/reference/js-reference#itp_support
+     */
+    readonly itpSupport: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Allowed parent origin(s) for iframe embedding.
+     * @see https://developers.google.com/identity/gsi/web/reference/js-reference#allowed_parent_origin
+     */
+    readonly allowedParentOrigin: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").StringSchema<undefined>, import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>], undefined>, undefined>;
+    /**
+     * Restrict sign-in to a specific Google Workspace hosted domain.
+     * @example 'example.com'
+     * @see https://developers.google.com/identity/gsi/web/reference/js-reference#hd
+     */
+    readonly hd: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+/**
+ * GTM configuration options with improved documentation
+ */
+export declare const GoogleTagManagerOptions: import("valibot").ObjectSchema<{
+    /**
+     * GTM container ID (format: GTM-XXXXXX)
+     * @see https://developers.google.com/tag-platform/tag-manager/web#install-the-container
+     */
+    readonly id: import("valibot").StringSchema<undefined>;
+    /**
+     * Optional dataLayer variable name
+     * @default 'dataLayer'
+     * @see https://developers.google.com/tag-platform/tag-manager/web/datalayer#rename_the_data_layer
+     */
+    readonly l: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Authentication token for environment-specific container versions
+     * @see https://support.google.com/tagmanager/answer/6328337
+     */
+    readonly auth: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Preview environment name
+     * @see https://support.google.com/tagmanager/answer/6328337
+     */
+    readonly preview: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /** Forces GTM cookies to take precedence when true */
+    readonly cookiesWin: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").BooleanSchema<undefined>, import("valibot").LiteralSchema<"x", undefined>], undefined>, undefined>;
+    /**
+     * Enables debug mode when true
+     * @see https://support.google.com/tagmanager/answer/6107056
+     */
+    readonly debug: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").BooleanSchema<undefined>, import("valibot").LiteralSchema<"x", undefined>], undefined>, undefined>;
+    /**
+     * No Personal Advertising - disables advertising features when true
+     * @see https://developers.google.com/tag-platform/tag-manager/templates/consent-apis
+     */
+    readonly npa: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").BooleanSchema<undefined>, import("valibot").LiteralSchema<"1", undefined>], undefined>, undefined>;
+    /** Custom dataLayer name (alternative to "l" property) */
+    readonly dataLayer: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Environment name for environment-specific container
+     * @see https://support.google.com/tagmanager/answer/6328337
+     */
+    readonly envName: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /** Referrer policy for analytics requests */
+    readonly authReferrerPolicy: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Default GCMv2 consent state(s) fired as `['consent','default', state]` onto the dataLayer
+     * before the `gtm.js` event. Pass an array to fire multiple defaults — for example,
+     * different defaults per `region` (more specific regions override broader ones at runtime).
+     * @see https://developers.google.com/tag-platform/tag-manager/templates/consent-apis
+     * @see https://developers.google.com/tag-platform/security/guides/consent?consentmode=advanced#region-specific-behavior
+     */
+    readonly defaultConsent: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").ObjectSchema<{
+        readonly ad_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly ad_user_data: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly ad_personalization: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly analytics_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly functionality_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly personalization_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly security_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly wait_for_update: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+        readonly region: import("valibot").OptionalSchema<import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>, undefined>;
+    }, undefined>, import("valibot").ArraySchema<import("valibot").ObjectSchema<{
+        readonly ad_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly ad_user_data: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly ad_personalization: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly analytics_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly functionality_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly personalization_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly security_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+        readonly wait_for_update: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+        readonly region: import("valibot").OptionalSchema<import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>, undefined>;
+    }, undefined>, undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const HotjarOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Hotjar Site ID.
+     * @see https://help.hotjar.com/hc/en-us/articles/115012039247-Hotjar-Tracking-Code
+     */
+    readonly id: import("valibot").NumberSchema<undefined>;
+    /**
+     * The Hotjar snippet version.
+     * @default 6
+     */
+    readonly sv: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+}, undefined>;
+export declare const InstagramEmbedOptions: import("valibot").ObjectSchema<{
+    /**
+     * The Instagram post URL to embed.
+     * @example 'https://www.instagram.com/p/C_XXXXXXXXX/'
+     * @see https://developers.facebook.com/docs/instagram/oembed/
+     */
+    readonly postUrl: import("valibot").StringSchema<undefined>;
+    /**
+     * Whether to include captions in the embed.
+     * @default true
+     */
+    readonly captions: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Custom API endpoint for fetching embed HTML.
+     * @default '/_scripts/embed/instagram'
+     */
+    readonly apiEndpoint: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const IntercomOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Intercom app ID.
+     * @see https://developers.intercom.com/installing-intercom/docs/javascript-api-attributes-objects
+     */
+    readonly app_id: import("valibot").StringSchema<undefined>;
+    /**
+     * The regional API base URL. Choose based on your Intercom data hosting region.
+     */
+    readonly api_base: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"https://api-iam.intercom.io", undefined>, import("valibot").LiteralSchema<"https://api-iam.eu.intercom.io", undefined>, import("valibot").LiteralSchema<"https://api-iam.au.intercom.io", undefined>], undefined>, undefined>;
+    /**
+     * The name of the logged-in user.
+     */
+    readonly name: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The email address of the logged-in user.
+     */
+    readonly email: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * A unique identifier for the logged-in user.
+     */
+    readonly user_id: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The horizontal alignment of the Intercom messenger launcher.
+     * @default 'right'
+     */
+    readonly alignment: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"left", undefined>, import("valibot").LiteralSchema<"right", undefined>], undefined>, undefined>;
+    /**
+     * The horizontal padding (in px) of the messenger launcher from the edge of the page.
+     * @default 20
+     */
+    readonly horizontal_padding: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * The vertical padding (in px) of the messenger launcher from the bottom of the page.
+     * @default 20
+     */
+    readonly vertical_padding: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+}, undefined>;
+export declare const MatomoAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * The URL of your self-hosted Matomo instance.
+     * Either `matomoUrl` or `cloudId` is required.
+     * @example 'https://matomo.example.com'
+     * @see https://developer.matomo.org/guides/tracking-javascript-guide
+     */
+    readonly matomoUrl: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Your Matomo site ID.
+     * @default '1'
+     */
+    readonly siteId: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").StringSchema<undefined>, import("valibot").NumberSchema<undefined>], undefined>, undefined>;
+    /**
+     * Your Matomo Cloud ID (the subdomain portion of your `*.matomo.cloud` URL).
+     * Either `matomoUrl` or `cloudId` is required.
+     * @example 'mysite.matomo.cloud'
+     */
+    readonly cloudId: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * A custom tracker URL. Overrides the default tracker endpoint derived from `matomoUrl` or `cloudId`.
+     */
+    readonly trackerUrl: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Whether to track the initial page view on load.
+     * @deprecated Use `watch: true` (default) for automatic page view tracking.
+     */
+    readonly trackPageView: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Enable download and outlink tracking.
+     */
+    readonly enableLinkTracking: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Disable all tracking cookies for cookieless analytics.
+     */
+    readonly disableCookies: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Automatically track page views on route change.
+     * @default true
+     */
+    readonly watch: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Default tracking-consent state applied BEFORE the tracker is initialised.
+     * - `'required'` — call `requireConsent` without granting (user must opt in later).
+     * - `'given'` — call `requireConsent` then `setConsentGiven`.
+     * - `'not-required'` — no consent gating (default Matomo behaviour).
+     * @see https://developer.matomo.org/guides/tracking-consent
+     */
+    readonly defaultConsent: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"required", undefined>, import("valibot").LiteralSchema<"given", undefined>, import("valibot").LiteralSchema<"not-required", undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const MetaPixelOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Meta (Facebook) Pixel ID.
+     * @see https://developers.facebook.com/docs/meta-pixel/get-started
+     */
+    readonly id: import("valibot").UnionSchema<[import("valibot").StringSchema<undefined>, import("valibot").NumberSchema<undefined>], undefined>;
+    /**
+     * Default consent state. `'granted'` fires `fbq('consent', 'grant')`,
+     * `'denied'` fires `fbq('consent', 'revoke')`, both called before `fbq('init', id)`.
+     * @see https://www.facebook.com/business/help/1151321516677370
+     */
+    readonly defaultConsent: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const NpmOptions: import("valibot").ObjectSchema<{
+    /**
+     * The npm package name to load.
+     * @example 'lodash'
+     */
+    readonly packageName: import("valibot").StringSchema<undefined>;
+    /**
+     * The specific file path within the package to load.
+     * @example '/dist/lodash.min.js'
+     */
+    readonly file: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The package version to load.
+     * @default 'latest'
+     */
+    readonly version: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The CDN provider to use for loading the package.
+     * @default 'unpkg'
+     * @see https://unpkg.com
+     * @see https://www.jsdelivr.com
+     * @see https://cdnjs.com
+     */
+    readonly provider: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"jsdelivr", undefined>, import("valibot").LiteralSchema<"cdnjs", undefined>, import("valibot").LiteralSchema<"unpkg", undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const PayPalOptions: import("valibot").UnionSchema<[import("valibot").ObjectSchema<{
+    /**
+     * Your PayPal client ID.
+     * @see https://developer.paypal.com/sdk/js/reference/
+     */
+    readonly clientId: import("valibot").StringSchema<undefined>;
+    readonly clientToken: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Use the PayPal sandbox environment. Defaults to `true` in development.
+     */
+    readonly sandbox: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+}, undefined>, import("valibot").ObjectSchema<{
+    readonly clientId: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * A server-generated client token for authentication.
+     * @see https://docs.paypal.ai/payments/methods/paypal/sdk/js/v6/paypal-checkout
+     */
+    readonly clientToken: import("valibot").StringSchema<undefined>;
+    /**
+     * Use the PayPal sandbox environment. Defaults to `true` in development.
+     */
+    readonly sandbox: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+}, undefined>], undefined>;
+export declare const PostHogOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your PostHog project API key.
+     * @see https://posthog.com/docs/libraries/js#usage
+     */
+    readonly apiKey: import("valibot").StringSchema<undefined>;
+    /**
+     * Your PostHog data region.
+     * @default 'us'
+     * @see https://posthog.com/docs/libraries/js#config
+     */
+    readonly region: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"us", undefined>, import("valibot").LiteralSchema<"eu", undefined>], undefined>, undefined>;
+    /**
+     * Custom API host URL. Overrides the default derived from `region`.
+     * Useful for self-hosted instances or reverse proxies.
+     */
+    readonly apiHost: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Enable autocapture of clicks, form submissions, and page views.
+     * @default true
+     */
+    readonly autocapture: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Capture page views automatically. Set to `'history_change'` to only capture on history changes.
+     * @default true
+     */
+    readonly capturePageview: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").BooleanSchema<undefined>, import("valibot").LiteralSchema<"history_change", undefined>], undefined>, undefined>;
+    /**
+     * Capture page leave events automatically.
+     * @default true
+     */
+    readonly capturePageleave: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Disable session recording.
+     */
+    readonly disableSessionRecording: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Additional PostHog configuration options passed directly to `posthog.init()`.
+     * @see https://posthog.com/docs/libraries/js#config
+     */
+    readonly config: import("valibot").OptionalSchema<import("valibot").RecordSchema<import("valibot").StringSchema<undefined>, import("valibot").AnySchema, undefined>, undefined>;
+    /**
+     * Default capture-consent state for PostHog.
+     * - `'opt-out'`: passed as `opt_out_capturing_by_default: true` to `posthog.init`, so capturing is suppressed from the first event.
+     * - `'opt-in'`: applied after `posthog.init` via `posthog.opt_in_capturing()` on the returned instance.
+     * @see https://posthog.com/docs/privacy/opting-out
+     */
+    readonly defaultConsent: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"opt-in", undefined>, import("valibot").LiteralSchema<"opt-out", undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const RedditPixelOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Reddit Pixel advertiser ID.
+     * @see https://reddithelp.com/en/categories/advertising/managing-ads/installing-reddit-pixel
+     */
+    readonly id: import("valibot").StringSchema<undefined>;
+}, undefined>;
+export declare const RybbitAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Rybbit site ID.
+     * @see https://rybbit.io/docs
+     */
+    readonly siteId: import("valibot").UnionSchema<[import("valibot").StringSchema<undefined>, import("valibot").NumberSchema<undefined>], undefined>;
+    /**
+     * Automatically track page views.
+     * @default true
+     */
+    readonly autoTrackPageview: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Enable SPA (single-page app) route tracking.
+     * @default true
+     */
+    readonly trackSpa: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Include query parameters in tracked URLs.
+     */
+    readonly trackQuery: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track outbound link clicks.
+     */
+    readonly trackOutbound: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track JavaScript errors.
+     */
+    readonly trackErrors: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Enable session replay recording.
+     */
+    readonly sessionReplay: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Enable Web Vitals tracking (LCP, FID, CLS, etc.).
+     */
+    readonly webVitals: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * URL patterns to skip from tracking (glob syntax).
+     */
+    readonly skipPatterns: import("valibot").OptionalSchema<import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>, undefined>;
+    /**
+     * URL patterns to mask in tracked data (glob syntax).
+     */
+    readonly maskPatterns: import("valibot").OptionalSchema<import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>, undefined>;
+    /**
+     * Debounce interval (in ms) for page view tracking.
+     */
+    readonly debounce: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * API key for authenticated tracking.
+     */
+    readonly apiKey: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Override the analytics host URL. When first-party mode is enabled, this is
+     * auto-injected to route through the proxy. The SDK derives its API endpoint
+     * from the script src, so this changes the script src to `${analyticsHost}/script.js`.
+     */
+    readonly analyticsHost: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const MixpanelAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Mixpanel project token.
+     * @see https://docs.mixpanel.com/docs/tracking-methods/sdks/javascript#1-initialize-the-library
+     */
+    readonly token: import("valibot").StringSchema<undefined>;
+    /**
+     * Default tracking-consent state for Mixpanel.
+     * - `'opt-out'`: passed as `opt_out_tracking_by_default: true` to `mixpanel.init`, so tracking is suppressed from the first call.
+     * - `'opt-in'`: queued via `mixpanel.push(['opt_in_tracking'])` so the real SDK runs it immediately after load.
+     * @see https://docs.mixpanel.com/docs/privacy/opt-out-of-tracking
+     */
+    readonly defaultConsent: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"opt-in", undefined>, import("valibot").LiteralSchema<"opt-out", undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const BingUetOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Bing UET tag ID.
+     * @see https://help.ads.microsoft.com/#apex/ads/en/56682/2-500
+     */
+    readonly id: import("valibot").StringSchema<undefined>;
+    /**
+     * Enable automatic SPA page tracking.
+     * @default true
+     */
+    readonly enableAutoSpaTracking: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Default consent state fired as `uetq.push('consent', 'default', ...)` before UET init.
+     * @see https://help.ads.microsoft.com/#apex/ads/en/60119/1-500
+     */
+    readonly defaultConsent: import("valibot").OptionalSchema<import("valibot").ObjectSchema<{
+        readonly ad_storage: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>], undefined>, undefined>;
+    }, undefined>, undefined>;
+}, undefined>;
+export declare const LinkedInInsightOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your LinkedIn Insight Tag Partner ID, or an array of Partner IDs to push
+     * onto window._linkedin_data_partner_ids. The first ID is used as the
+     * primary _linkedin_partner_id global.
+     * @example '111143'
+     * @example ['111143', '111154']
+     * @see https://www.linkedin.com/help/lms/answer/a417869/access-your-linkedin-partner-id
+     */
+    readonly id: import("valibot").UnionSchema<[import("valibot").SchemaWithPipe<readonly [import("valibot").StringSchema<undefined>, import("valibot").MinLengthAction<string, 1, undefined>]>, import("valibot").SchemaWithPipe<readonly [import("valibot").ArraySchema<import("valibot").SchemaWithPipe<readonly [import("valibot").StringSchema<undefined>, import("valibot").MinLengthAction<string, 1, undefined>]>, undefined>, import("valibot").MinLengthAction<string[], 1, undefined>]>], undefined>;
+    /**
+     * Optional page-load event ID for Conversions API deduplication. Assigned
+     * to window._linkedin_event_id BEFORE the Insight Tag base code runs. Must
+     * match the eventId sent with the corresponding server-side Conversions
+     * API event.
+     *
+     * Per-event conversion deduplication uses the per-call event_id passed to
+     * lintrk('track', { conversion_id, event_id }) instead.
+     * @see https://learn.microsoft.com/en-us/linkedin/marketing/conversions/deduplication
+     */
+    readonly eventId: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Auto-fire lintrk('track') on Vue Router route changes (SPA virtual page
+     * views). When true, suppresses the script's built-in auto-page-view via
+     * window._wait_for_lintrk and tracks every navigation including the
+     * initial page through Nuxt's page:finish hook. When false, the script
+     * fires its own page-view exactly once on load and SPA navigations are
+     * not tracked unless lintrk('track') is called manually.
+     * @default false
+     */
+    readonly enableAutoSpaTracking: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+}, undefined>;
+export declare const UsercentricsOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Usercentrics CMP v3 ruleset ID. Find it in the admin under
+     * Implementation; the snippet's `data-ruleset-id` value.
+     */
+    readonly rulesetId: import("valibot").SchemaWithPipe<readonly [import("valibot").StringSchema<undefined>, import("valibot").MinLengthAction<string, 1, undefined>]>;
+    /**
+     * Inject the Usercentrics autoblocker (`autoblocker.js`) ahead of the loader.
+     * Enable when your ruleset relies on Auto Blocking (vs. Manual Blocking) to
+     * gate third-party scripts before consent is granted.
+     * @default false
+     */
+    readonly autoblocker: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Override the language displayed by the CMP UI (BCP-47 code, e.g. `'en'`, `'de'`).
+     */
+    readonly language: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const CalendlyOptions: import("valibot").ObjectSchema<{
+    /**
+     * The Calendly event URL to embed.
+     * Required for inline, popup, and badge widgets when called via the composable.
+     * @example 'https://calendly.com/your-name/30min'
+     * @see https://help.calendly.com/hc/en-us/articles/223147027
+     */
+    readonly url: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Pre-fill invitee fields on the booking form.
+     * @see https://help.calendly.com/hc/en-us/articles/360020052833
+     */
+    readonly prefill: import("valibot").OptionalSchema<import("valibot").ObjectSchema<{
+        readonly name: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        readonly email: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        readonly firstName: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        readonly lastName: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        /** Custom answers keyed by `a1`, `a2`, ... matching custom question order. */
+        readonly customAnswers: import("valibot").OptionalSchema<import("valibot").RecordSchema<import("valibot").StringSchema<undefined>, import("valibot").StringSchema<undefined>, undefined>, undefined>;
+    }, undefined>, undefined>;
+    /**
+     * UTM parameters appended to the booking URL for marketing attribution.
+     * @see https://help.calendly.com/hc/en-us/articles/360020052833
+     */
+    readonly utm: import("valibot").OptionalSchema<import("valibot").ObjectSchema<{
+        readonly utmCampaign: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        readonly utmSource: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        readonly utmMedium: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        readonly utmContent: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        readonly utmTerm: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    }, undefined>, undefined>;
+    /**
+     * Theme and layout overrides applied to the booking page.
+     * @see https://help.calendly.com/hc/en-us/articles/360020052833
+     */
+    readonly pageSettings: import("valibot").OptionalSchema<import("valibot").ObjectSchema<{
+        readonly backgroundColor: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        readonly hideEventTypeDetails: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+        readonly hideLandingPageDetails: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+        readonly primaryColor: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+        readonly textColor: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    }, undefined>, undefined>;
+    /**
+     * CSS selector for the element that hosts the inline widget.
+     * Required when the widget is initialised inline; the element should have a
+     * minimum height of around 700px so the booking iframe is fully visible.
+     */
+    readonly parentElement: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const SegmentOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Segment write key.
+     * @see https://segment.com/docs/connections/sources/catalog/libraries/website/javascript/quickstart/
+     */
+    readonly writeKey: import("valibot").StringSchema<undefined>;
+    /**
+     * The global variable name for the analytics instance.
+     * @default 'analytics'
+     */
+    readonly analyticsKey: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const InitObjectPropertiesSchema: import("valibot").ObjectSchema<{
+    /**
+     * The user's email address (for matching).
+     */
+    readonly user_email: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's IP address.
+     */
+    readonly ip_address: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's phone number (for matching).
+     */
+    readonly user_phone_number: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * SHA-256 hashed email address.
+     */
+    readonly user_hashed_email: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * SHA-256 hashed phone number.
+     */
+    readonly user_hashed_phone_number: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's first name.
+     */
+    readonly firstname: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's last name.
+     */
+    readonly lastname: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's city.
+     */
+    readonly geo_city: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's region/state.
+     */
+    readonly geo_region: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's postal/zip code.
+     */
+    readonly geo_postal_code: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's country code.
+     */
+    readonly geo_country: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's age.
+     */
+    readonly age: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const SpeedCurveOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your SpeedCurve customer ID.
+     * @see https://support.speedcurve.com/docs/add-rum-to-your-site
+     */
+    readonly id: import("valibot").SchemaWithPipe<readonly [import("valibot").StringSchema<undefined>, import("valibot").MinLengthAction<string, 1, undefined>]>;
+    /**
+     * Enable SPA (single-page application) mode.
+     * When true, lux.js tracks soft navigations instead of full page loads.
+     * @see https://support.speedcurve.com/docs/single-page-applications
+     */
+    readonly spaMode: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Automatically wire Vue Router hooks for SPA tracking when spaMode is true.
+     * Set to false to instrument navigations manually.
+     * @default true (when spaMode is true)
+     */
+    readonly autoTrackSpaNavigations: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Page label shown in the SpeedCurve dashboard.
+     * Accepts a static string, a function `(to) => string | false` for per-navigation labels,
+     * or `false` to disable labeling entirely. A callback returning `false` skips updating
+     * the label for that navigation.
+     * @default String(to.name ?? to.path)
+     */
+    readonly label: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").StringSchema<undefined>, import("valibot").FunctionSchema<undefined>, import("valibot").LiteralSchema<false, undefined>], undefined>, undefined>;
+    /**
+     * Sampling rate (0–100). Percentage of sessions that send beacons.
+     * Upstream spelling is lowercase — matches LUX UserConfig.
+     */
+    readonly samplerate: import("valibot").OptionalSchema<import("valibot").SchemaWithPipe<readonly [import("valibot").NumberSchema<undefined>, import("valibot").MinValueAction<number, 0, undefined>, import("valibot").MaxValueAction<number, 100, undefined>]>, undefined>;
+    /**
+     * Send the beacon when the page is hidden (pagehide event).
+     * @default true
+     */
+    readonly sendBeaconOnPageHidden: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track JavaScript errors.
+     * @default true
+     */
+    readonly trackErrors: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Maximum number of errors to track per page view.
+     * @default 5
+     */
+    readonly maxErrors: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Minimum time (ms) before a beacon can be sent.
+     */
+    readonly minMeasureTime: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Maximum time (ms) after which the beacon is sent regardless of load state.
+     * @default 60000
+     */
+    readonly maxMeasureTime: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Start a new beacon when the page becomes visible after being hidden.
+     */
+    readonly newBeaconOnPageShow: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Track pages loaded in background tabs.
+     * @default false
+     */
+    readonly trackHiddenPages: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Cookie domain for cross-subdomain session tracking.
+     */
+    readonly cookieDomain: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const SnapTrPixelOptions: import("valibot").ObjectSchema<{
+    /**
+     * The user's email address (for matching).
+     */
+    readonly user_email: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's IP address.
+     */
+    readonly ip_address: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's phone number (for matching).
+     */
+    readonly user_phone_number: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * SHA-256 hashed email address.
+     */
+    readonly user_hashed_email: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * SHA-256 hashed phone number.
+     */
+    readonly user_hashed_phone_number: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's first name.
+     */
+    readonly firstname: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's last name.
+     */
+    readonly lastname: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's city.
+     */
+    readonly geo_city: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's region/state.
+     */
+    readonly geo_region: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's postal/zip code.
+     */
+    readonly geo_postal_code: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's country code.
+     */
+    readonly geo_country: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * The user's age.
+     */
+    readonly age: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Your Snapchat Pixel ID.
+     * @see https://businesshelp.snapchat.com/s/article/pixel-website-install
+     */
+    readonly id: import("valibot").StringSchema<undefined>;
+    /**
+     * Whether to automatically track a `PAGE_VIEW` event on initialization.
+     */
+    readonly trackPageView: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+}, undefined>;
+export declare const StripeOptions: import("valibot").ObjectSchema<{
+    /**
+     * Whether to load Stripe's advanced fraud detection signals.
+     * Set to `false` to opt out.
+     * @default true
+     * @see https://docs.stripe.com/disputes/prevention/advanced-fraud-detection
+     */
+    readonly advancedFraudSignals: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * The Stripe.js SDK version to load.
+     * Named releases get autocomplete; any future codename is also accepted.
+     * @default 'basil'
+     * @see https://docs.stripe.com/sdks/stripejs-versioning
+     */
+    readonly version: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"v3", undefined>, import("valibot").LiteralSchema<"acacia", undefined>, import("valibot").LiteralSchema<"basil", undefined>, import("valibot").LiteralSchema<"clover", undefined>, import("valibot").LiteralSchema<"dahlia", undefined>, import("valibot").StringSchema<undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const TikTokPixelOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your TikTok Pixel ID.
+     * @see https://ads.tiktok.com/help/article/get-started-pixel
+     */
+    readonly id: import("valibot").StringSchema<undefined>;
+    /**
+     * Whether to automatically track a page view on initialization.
+     * @default true
+     */
+    readonly trackPageView: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Default consent state, applied before `ttq('init', id)`.
+     * - `'granted'` fires `ttq.grantConsent()`
+     * - `'denied'` fires `ttq.revokeConsent()`
+     * - `'hold'` fires `ttq.holdConsent()` to defer until an explicit update
+     * @see https://business-api.tiktok.com/portal/docs?id=1739585600931842
+     */
+    readonly defaultConsent: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"granted", undefined>, import("valibot").LiteralSchema<"denied", undefined>, import("valibot").LiteralSchema<"hold", undefined>], undefined>, undefined>;
+    /**
+     * Data residency region for the Pixel SDK.
+     * - `'global'` (default) -> `analytics.tiktok.com`
+     * - `'us'` -> `analytics.us.tiktok.com` (US enterprise data residency)
+     */
+    readonly region: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"global", undefined>, import("valibot").LiteralSchema<"us", undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const UmamiAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your Umami website ID.
+     * @see https://umami.is/docs/tracker-config
+     */
+    readonly websiteId: import("valibot").StringSchema<undefined>;
+    /**
+     * By default, Umami will send data to wherever the script is located.
+     * You can override this to send data to another location.
+     * @see https://umami.is/docs/tracker-config#data-host-url
+     */
+    readonly hostUrl: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * By default, Umami tracks all pageviews and events for you automatically.
+     * You can disable this behavior and track events yourself using the tracker functions.
+     * @default true
+     * @see https://umami.is/docs/tracker-functions
+     */
+    readonly autoTrack: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * If you want the tracker to only run on specific domains, you can add them to your tracker script.
+     * This is a comma delimited list of domain names.
+     * Helps if you are working in a staging/development environment.
+     * @see https://umami.is/docs/tracker-config#data-domains
+     */
+    readonly domains: import("valibot").OptionalSchema<import("valibot").ArraySchema<import("valibot").StringSchema<undefined>, undefined>, undefined>;
+    /**
+     * If you want the tracker to collect events under a specific tag.
+     * Events can be filtered in the dashboard by a specific tag.
+     * @see https://umami.is/docs/tracker-config#data-tag
+     */
+    readonly tag: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Function that will be called before data is sent to Umami.
+     * The function takes two parameters: type and payload.
+     * Return the payload to continue sending, or return a falsy value to cancel.
+     * @see https://umami.is/docs/tracker-config#data-before-send
+     */
+    readonly beforeSend: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").CustomSchema<(type: string, payload: Record<string, any>) => Record<string, any> | null | false, undefined>, import("valibot").StringSchema<undefined>], undefined>, undefined>;
+}, undefined>;
+export declare const XEmbedOptions: import("valibot").ObjectSchema<{
+    /**
+     * The tweet ID to embed.
+     * @example '1754336034228171055'
+     * @see https://developer.x.com/en/docs/twitter-for-websites/embedded-tweets/overview
+     */
+    readonly tweetId: import("valibot").StringSchema<undefined>;
+    /**
+     * Optional: Custom API endpoint for fetching tweet data.
+     * @default '/_scripts/embed/x'
+     */
+    readonly apiEndpoint: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Optional: Custom image proxy endpoint.
+     * @default '/_scripts/embed/x-image'
+     */
+    readonly imageProxyEndpoint: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const VercelAnalyticsOptions: import("valibot").ObjectSchema<{
+    /**
+     * The DSN of the project to send events to.
+     * Only required when self-hosting or deploying outside of Vercel.
+     */
+    readonly dsn: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Whether to disable automatic page view tracking on route changes.
+     * Set to true if you want to manually call pageview().
+     */
+    readonly disableAutoTrack: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * The mode to use for the analytics script.
+     * - `auto` - Automatically detect the environment (default)
+     * - `production` - Always use production script
+     * - `development` - Always use development script (logs to console)
+     */
+    readonly mode: import("valibot").OptionalSchema<import("valibot").UnionSchema<[import("valibot").LiteralSchema<"auto", undefined>, import("valibot").LiteralSchema<"development", undefined>, import("valibot").LiteralSchema<"production", undefined>], undefined>, undefined>;
+    /**
+     * Whether to enable debug logging.
+     * Automatically enabled in development/test environments.
+     */
+    readonly debug: import("valibot").OptionalSchema<import("valibot").BooleanSchema<undefined>, undefined>;
+    /**
+     * Custom endpoint for data collection.
+     * Useful for self-hosted or proxied setups.
+     */
+    readonly endpoint: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const XPixelOptions: import("valibot").ObjectSchema<{
+    /**
+     * Your X (Twitter) Pixel ID.
+     * @see https://business.twitter.com/en/help/campaign-measurement-and-analytics/conversion-tracking-for-websites.html
+     */
+    readonly id: import("valibot").StringSchema<undefined>;
+    /**
+     * The X Pixel script version.
+     * @default '1.1'
+     */
+    readonly version: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;
+export declare const GravatarOptions: import("valibot").ObjectSchema<{
+    /**
+     * Cache duration for proxied avatar images in seconds.
+     * @default 3600
+     */
+    readonly cacheMaxAge: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Default image to show when no Gravatar exists.
+     * @see https://docs.gravatar.com/general/images/#default-image
+     * @default 'mp'
+     */
+    readonly default: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+    /**
+     * Avatar size in pixels (1-2048).
+     * @default 80
+     */
+    readonly size: import("valibot").OptionalSchema<import("valibot").NumberSchema<undefined>, undefined>;
+    /**
+     * Content rating filter.
+     * @default 'g'
+     */
+    readonly rating: import("valibot").OptionalSchema<import("valibot").StringSchema<undefined>, undefined>;
+}, undefined>;

@@ -1,0 +1,315 @@
+import { computed, defineAsyncComponent, defineComponent, getCurrentInstance, h, inject, onErrorCaptured, onUnmounted, ref, shallowRef, toRaw, } from 'vue';
+import { findLastTextNodeAndAppendNode, getCaret } from "../utils/caret.js";
+import { pascalCase, resolveAttributes } from 'comark/utils';
+// Cache for dynamically resolved components
+const asyncComponentCache = new Map();
+function isPromiseLike(value) {
+    return !!value && typeof value.then === 'function';
+}
+function unwrapComponent(mod) {
+    return mod && typeof mod === 'object' && 'default' in mod ? mod.default : mod;
+}
+/**
+ * Helper to get tag from a Node
+ */
+function getTag(node) {
+    if (Array.isArray(node) && node.length >= 1) {
+        return node[0];
+    }
+    return null;
+}
+/**
+ * Helper to get props from a Node
+ */
+function getProps(node) {
+    if (Array.isArray(node) && node.length >= 2) {
+        return node[1] || {};
+    }
+    return {};
+}
+/**
+ * Helper to get children from a Node
+ */
+function getChildren(node) {
+    if (Array.isArray(node) && node.length > 2) {
+        return node.slice(2);
+    }
+    return [];
+}
+function resolveComponent(tag, components, componentsManifest) {
+    const appComponents = getCurrentInstance()?.appContext?.components;
+    const pascalTag = pascalCase(tag);
+    const proseTag = `Prose${pascalTag}`;
+    let resolvedComponent = components[proseTag] ||
+        components[tag] ||
+        components[pascalTag] ||
+        // If the component is not found in the components map, try to find it in the app context
+        appComponents?.[proseTag] ||
+        appComponents?.[pascalTag];
+    // If not in components map and manifest is provided, try dynamic resolution
+    if (!resolvedComponent && componentsManifest) {
+        // Check cache first to avoid creating duplicate async components
+        const cacheKey = tag;
+        if (!asyncComponentCache.has(cacheKey)) {
+            const resolved = componentsManifest(tag);
+            if (isPromiseLike(resolved)) {
+                asyncComponentCache.set(cacheKey, defineAsyncComponent(() => resolved));
+            }
+            else if (resolved) {
+                asyncComponentCache.set(cacheKey, unwrapComponent(resolved));
+            }
+        }
+        resolvedComponent = asyncComponentCache.get(cacheKey);
+    }
+    return resolvedComponent;
+}
+/**
+ * Render a single Comark node to Vue VNode
+ */
+function renderNode(node, components = {}, key, componentsManifest, parent, renderData = { frontmatter: {}, meta: {}, data: {}, props: {} }) {
+    // Handle text nodes (strings)
+    if (typeof node === 'string') {
+        return node;
+    }
+    // Handle element nodes (arrays)
+    if (Array.isArray(node)) {
+        const tag = getTag(node);
+        if (!tag)
+            return null;
+        const nodeProps = getProps(node);
+        const children = getChildren(node);
+        // Check if there's a custom component for this tag
+        let customComponent;
+        if (parent?.[0] !== 'pre') {
+            if (nodeProps.as) {
+                customComponent = resolveComponent(nodeProps.as, components, componentsManifest);
+            }
+            if (!customComponent) {
+                customComponent = resolveComponent(tag, components, componentsManifest);
+            }
+        }
+        const component = customComponent || tag;
+        // Resolve `:prefix` bindings and let Vue-specific attribute mapping run
+        // on top (e.g. `className` → `class`).
+        const resolved = resolveAttributes(nodeProps, renderData, { parseJson: true });
+        const props = {};
+        for (const k in resolved) {
+            if (k === 'className') {
+                props.class = resolved[k];
+            }
+            else {
+                props[k] = resolved[k];
+            }
+        }
+        // @ts-expect-error - component might be a Vue component
+        if (component?.props?.__node || component?.__asyncResolved?.props?.__node) {
+            props.__node = node;
+        }
+        // Add key if provided
+        if (key !== undefined) {
+            props.key = key;
+        }
+        if (node.length === 2) {
+            return h(component, props);
+        }
+        // Only shadow the parent's `props` scope when the current element has its
+        // own attributes. Bare wrappers (`<p>`, `<ul>`, `<li>`, …) must keep the
+        // parent's scope so bindings like `{{ props.x }}` reach across them.
+        const hasOwnAttrs = Object.keys(resolved).length > 0;
+        const childrenRenderData = hasOwnAttrs ? { ...renderData, props } : renderData;
+        // Separate template elements (slots) from regular children
+        const slots = {};
+        const regularChildren = [];
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i];
+            if (child === undefined || child === null)
+                continue;
+            // Check if this is a slot template (array with tag 'template')
+            const childTag = getTag(child);
+            const childProps = getProps(child);
+            if (childTag === 'template' && childProps) {
+                // Find the slot name from props
+                // Support both { name: 'title' } and { '#title': '' } formats
+                let slotName;
+                if (childProps.name) {
+                    slotName = childProps.name;
+                }
+                else {
+                    // Use for...in instead of Object.keys().find() — avoids intermediate array
+                    for (const pk in childProps) {
+                        if (pk.startsWith('v-slot:')) {
+                            slotName = pk.substring(7);
+                            break;
+                        }
+                    }
+                }
+                if (slotName) {
+                    const slotChildren = getChildren(child);
+                    slots[slotName] = () => slotChildren
+                        .map((slotChild, idx) => renderNode(slotChild, components, idx, componentsManifest, node, childrenRenderData))
+                        .filter((slotChild) => slotChild !== null);
+                    continue;
+                }
+            }
+            const rendered = renderNode(child, components, i, componentsManifest, node, childrenRenderData);
+            if (rendered !== null) {
+                regularChildren.push(rendered);
+            }
+        }
+        // If using a custom component, pass slots
+        if (customComponent) {
+            // Always include default slot if there are regular children
+            if (regularChildren.length > 0) {
+                slots.default = () => regularChildren;
+            }
+            return h(component, props, slots);
+        }
+        // For native HTML tags, pass children directly (ignore slot templates)
+        return h(component, props, regularChildren);
+    }
+    return null;
+}
+/**
+ * MarkdownDocument component
+ *
+ * Renders an already-parsed Markdown document to Vue components/HTML — no parser
+ * in the client bundle. Supports custom component mapping for element tags.
+ *
+ * @example
+ * ```vue
+ * <template>
+ *   <MarkdownDocument :value="document" :components="customComponents" />
+ * </template>
+ *
+ * <script setup lang="ts">
+ * import { MarkdownDocument } from '@comark/vue'
+ * import CustomHeading from './CustomHeading.vue'
+ *
+ * const customComponents = {
+ *   h1: CustomHeading,
+ *   h2: CustomHeading,
+ * }
+ *
+ * const document = await parseMarkdown(`This is **markdown** with components.`)
+ * </script>
+ * ```
+ */
+export const MarkdownDocument = defineComponent({
+    name: 'MarkdownDocument',
+    props: {
+        /**
+         * The parsed Markdown document to render
+         */
+        value: {
+            type: Object,
+            default: undefined,
+        },
+        /**
+         * Custom component mappings for element tags
+         * Key: tag name (e.g., 'h1', 'p', 'MyComponent')
+         * Value: Vue component
+         */
+        components: {
+            type: Object,
+            default: () => ({}),
+        },
+        /**
+         * Dynamic component resolver function
+         * Used to resolve components that aren't in the components map
+         */
+        componentsManifest: {
+            type: Function,
+            default: undefined,
+        },
+        /**
+         * Enable streaming mode with stream-specific components
+         */
+        streaming: {
+            type: Boolean,
+            default: false,
+        },
+        /**
+         * If caret is true, a caret will be appended to the document's last text node
+         * If caret is an object, it will be appended with the given class
+         */
+        caret: {
+            type: [Boolean, Object],
+            default: false,
+        },
+        /**
+         * Additional data to pass to the renderer
+         */
+        data: {
+            type: Object,
+            default: () => ({}),
+        },
+        /**
+         * Document key used to subscribe to live updates via `globalThis.comarkContext`
+         */
+        documentKey: {
+            type: String,
+            default: undefined,
+        },
+    },
+    async setup(props) {
+        const inputDocument = computed(() => (props.value ?? { nodes: [], frontmatter: {}, meta: {} }));
+        const componentErrors = ref(new Set());
+        // Live document support: if an ambient context exists, subscribe to updates
+        // for this id and re-render with the pushed document. Cleaned up on unmount.
+        // The key is the document's own `meta.key` (set by a plugin) or the `documentKey` prop.
+        const liveDocument = shallowRef(null);
+        const key = inputDocument.value.meta?.key || props.documentKey;
+        if (key && globalThis.comarkContext) {
+            const cleanup = globalThis.comarkContext.get(key, toRaw(inputDocument.value)).listen((document) => {
+                liveDocument.value = document;
+            });
+            onUnmounted(() => cleanup(true));
+        }
+        // Capture errors from child components (e.g., during streaming when props are incomplete)
+        onErrorCaptured((_err, instance, _info) => {
+            // Get component name from instance
+            const componentName = instance?.$?.type?.name || instance?.type?.name || 'unknown';
+            // Track failed component to prevent re-rendering during streaming
+            componentErrors.value.add(componentName);
+            // Prevent error from propagating (don't crash the app during streaming)
+            return false;
+        });
+        const comark = inject('comark', { components: {}, componentManifest: () => null });
+        const components = computed(() => ({
+            ...comark?.components,
+            ...props.components,
+        }));
+        const componentManifest = (name) => {
+            let resolved = props.componentsManifest?.(name);
+            if (!resolved) {
+                resolved = comark?.componentManifest(name);
+            }
+            return resolved || null;
+        };
+        const caret = computed(() => getCaret(props.caret || false));
+        return () => {
+            // Render all nodes from the live document when present, else the value prop
+            const rawDocument = toRaw(liveDocument.value ?? inputDocument.value);
+            const nodes = [...(rawDocument.nodes || [])];
+            if (props.streaming && caret.value && nodes.length > 0) {
+                const hasStreamCaret = findLastTextNodeAndAppendNode(nodes[nodes.length - 1], caret.value);
+                if (!hasStreamCaret) {
+                    nodes.push(caret.value);
+                }
+            }
+            const renderData = {
+                frontmatter: rawDocument.frontmatter ||
+                    rawDocument.data ||
+                    {},
+                meta: rawDocument.meta || {},
+                data: props.data || {},
+                props: {},
+            };
+            const children = nodes
+                .map((node, index) => renderNode(node, components.value, index, componentManifest, undefined, renderData))
+                .filter((child) => child !== null);
+            // Wrap in a fragment
+            return h('div', { class: 'comark-content' }, children);
+        };
+    },
+});

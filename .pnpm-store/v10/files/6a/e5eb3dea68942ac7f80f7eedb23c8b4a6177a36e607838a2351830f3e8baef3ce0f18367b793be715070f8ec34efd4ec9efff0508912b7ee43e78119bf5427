@@ -1,0 +1,6 @@
+export function comment(node, _state) {
+    if (node[0] === null) {
+        return `<!--${node[2]}-->` + _state.context.blockSeparator;
+    }
+    return '';
+}

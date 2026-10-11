@@ -1,0 +1,9 @@
+import type { StripeConstructor } from '@stripe/stripe-js';
+import type { RegistryScriptInput } from '#nuxt-scripts/types';
+import { StripeOptions } from './schemas.js';
+export { StripeOptions };
+export type StripeInput = RegistryScriptInput<typeof StripeOptions, false>;
+export interface StripeApi {
+    Stripe: StripeConstructor;
+}
+export declare function useScriptStripe<T extends StripeApi>(_options?: StripeInput): import("#nuxt-scripts/types").UseScriptContext<T>;

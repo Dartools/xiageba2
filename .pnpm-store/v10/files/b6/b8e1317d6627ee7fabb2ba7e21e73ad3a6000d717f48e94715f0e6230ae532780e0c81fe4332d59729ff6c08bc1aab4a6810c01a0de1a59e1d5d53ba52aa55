@@ -1,0 +1,44 @@
+import type { RegistryScriptInput } from '#nuxt-scripts/types';
+import { DatabuddyAnalyticsOptions } from './schemas.js';
+export { DatabuddyAnalyticsOptions };
+export type DatabuddyAnalyticsInput = RegistryScriptInput<typeof DatabuddyAnalyticsOptions, false>;
+export interface DatabuddyAnalyticsApi {
+    /**
+     * Track a custom event.
+     * @param eventName Name of the event (use snake_case)
+     * @param properties Optional event properties
+     */
+    track: (eventName: string, properties?: Record<string, any>) => Promise<any> | any | void;
+    /**
+     * Manually record a page / screen view. Useful for SPA route changes.
+     * @param path Optional path to record (defaults to current location)
+     * @param properties Optional additional properties for the screen view
+     */
+    screenView: (path?: string, properties?: Record<string, any>) => void;
+    /**
+     * Set properties that will be attached to all future events (e.g. user_id).
+     * @param properties Key/value map of properties to attach globally
+     */
+    setGlobalProperties: (properties: Record<string, any>) => void;
+    /**
+     * Track a custom event alias (compatibility helper present on the global)
+     * @param eventName Name of the event
+     * @param properties Optional event properties
+     */
+    trackCustomEvent: (eventName: string, properties?: Record<string, any>) => void;
+    /**
+     * Clears session and anonymous identifiers (useful on logout).
+     */
+    clear: () => void;
+    /**
+     * Force immediate sending of any queued/batched events.
+     */
+    flush: () => void;
+}
+declare global {
+    interface Window {
+        databuddy?: DatabuddyAnalyticsApi;
+        db?: DatabuddyAnalyticsApi;
+    }
+}
+export declare function useScriptDatabuddyAnalytics<T extends DatabuddyAnalyticsApi>(_options?: DatabuddyAnalyticsInput): import("#nuxt-scripts/types").UseScriptContext<T>;

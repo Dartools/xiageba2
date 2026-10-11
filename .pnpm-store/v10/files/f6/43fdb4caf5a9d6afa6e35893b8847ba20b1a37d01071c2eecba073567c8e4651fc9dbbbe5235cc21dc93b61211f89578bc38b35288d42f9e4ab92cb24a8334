@@ -1,0 +1,23 @@
+/**
+ * Comark grammar for the `rangi` highlighter.
+ *
+ * Based on rangi's official markdown grammar
+ * ({@link https://github.com/pi0/rangi/blob/main/src/languages/md.ts}), extended
+ * with the Comark syntax: YAML frontmatter, block components (`::name`),
+ * inline components (`:name`), spans (`[text]{attrs}`), inline attributes
+ * (`{.class #id key=value}`), bindings (`{{ value || default }}`), named slots
+ * (`#slot`), alerts (`> [!NOTE]`) and task lists.
+ *
+ * Rules are plain tuples — `[match, type, sub]` — evaluated by rangi's engine,
+ * which always takes the *earliest* match in the source and, on equal
+ * positions, the rule that comes first in this array. Comark rules are
+ * therefore listed before the markdown ones so they win ties (`# Title{#id}`
+ * over a plain heading, `[text]{.c}` over a link, …).
+ *
+ * The token types are given by name rather than by rangi's numeric constants:
+ * the constants are internal to the grammars it bundles, and a name is what
+ * a theme keys its colors by.
+ */
+import type { ShjLanguageDefinition } from 'rangi';
+declare const definition: ShjLanguageDefinition;
+export default definition;

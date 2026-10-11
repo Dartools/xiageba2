@@ -1,0 +1,6 @@
+export function hr(_, state, parent) {
+    if (parent?.[0] === 'p') {
+        return ':hr';
+    }
+    return '---' + state.context.blockSeparator;
+}

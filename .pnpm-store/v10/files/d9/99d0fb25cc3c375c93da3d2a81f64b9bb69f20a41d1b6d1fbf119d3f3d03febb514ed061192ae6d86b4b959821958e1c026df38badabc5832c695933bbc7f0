@@ -1,0 +1,28 @@
+import { Markdown } from './components/Markdown.ts';
+import type { ParserOptions } from 'comark';
+import { MarkdownDocument } from './components/MarkdownDocument.ts';
+export { Markdown } from './components/Markdown.ts';
+export type { MarkdownProps } from './components/Markdown.ts';
+export { MarkdownDocument } from './components/MarkdownDocument.ts';
+export type { MarkdownDocumentProps } from './components/MarkdownDocument.ts';
+export type * from 'comark';
+interface DefineMarkdownComponentOptions extends ParserOptions {
+    extends?: typeof Markdown;
+    name?: string;
+    components?: Record<string, any>;
+    /**
+     * Additional classes for the wrapper div
+     */
+    class?: string;
+}
+interface DefineMarkdownDocumentOptions {
+    extends?: typeof MarkdownDocument;
+    name?: string;
+    components?: Record<string, any>;
+    /**
+     * Additional classes for the wrapper div
+     */
+    class?: string;
+}
+export declare function defineMarkdownComponent(config?: DefineMarkdownComponentOptions): typeof Markdown;
+export declare function defineMarkdownDocumentComponent(config?: DefineMarkdownDocumentOptions): typeof MarkdownDocument;

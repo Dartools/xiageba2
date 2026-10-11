@@ -1,0 +1,7 @@
+import type { ElementNode } from 'comark';
+interface CaretOptions {
+    class?: string;
+}
+export declare function getCaret(options: boolean | CaretOptions): ElementNode | null;
+export declare function findLastTextNodeAndAppendNode(parent: ElementNode, nodeToAppend: ElementNode): boolean;
+export {};

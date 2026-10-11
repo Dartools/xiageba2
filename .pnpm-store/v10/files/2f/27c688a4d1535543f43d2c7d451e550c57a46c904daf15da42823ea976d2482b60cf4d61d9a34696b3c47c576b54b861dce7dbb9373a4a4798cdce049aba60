@@ -1,0 +1,18 @@
+import type { RegistryScriptInput } from '#nuxt-scripts/types';
+import { GoogleMapsOptions } from './schemas.js';
+export { GoogleMapsOptions };
+export type GoogleMapsInput = RegistryScriptInput<typeof GoogleMapsOptions>;
+type MapsNamespace = typeof window.google.maps;
+export interface GoogleMapsApi {
+    maps: Promise<MapsNamespace>;
+}
+declare global {
+    interface Window {
+        google: {
+            maps: {
+                __ib__: () => void;
+            };
+        };
+    }
+}
+export declare function useScriptGoogleMaps<T extends GoogleMapsApi>(_options?: GoogleMapsInput): import("#nuxt-scripts/types").UseScriptContext<T>;

@@ -1,0 +1,2 @@
+export * from '@comark/vue/plugins/math';
+export { default } from '@comark/vue/plugins/math';

@@ -1,0 +1,286 @@
+import { resolvePath, resolveFiles, addPluginTemplate, useLogger, addServerPlugin, defineNuxtModule, createResolver, addServerTemplate } from '@nuxt/kit';
+import { readFile } from 'node:fs/promises';
+import { normalize, join } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import browserslist from 'browserslist';
+import { createRequire } from 'node:module';
+import crypto from 'node:crypto';
+import { safari10NoModuleFix, systemJSInlineCode, detectModernBrowserCode, dynamicFallbackInlineCode } from '../dist/runtime/snippets/v8.js';
+
+async function setupCustomPolyfills(nuxt, options) {
+  const polyfills = [];
+  if (options.polyfills) {
+    for (const path of options.polyfills) {
+      polyfills.push(await resolvePath(path, { cwd: nuxt.options.srcDir }));
+    }
+  }
+  options.scanDirs ??= ["polyfills"];
+  if (options.scanDirs.length > 0) {
+    const jsExts = /* @__PURE__ */ new Set([".js", ".mjs", ".cjs", ".ts", ".mts", ".cts"]);
+    const found = (await resolveFiles(nuxt.options.srcDir, options.scanDirs)).filter((p) => jsExts.has(p.slice(p.lastIndexOf(".")))).sort();
+    polyfills.push(...found);
+  }
+  if (polyfills.length === 0) {
+    return;
+  }
+  addPluginTemplate({
+    filename: "custom-polyfills-plugin.client.mjs",
+    mode: "client",
+    order: -999,
+    // should run before any other plugin
+    getContents: () => `
+import { defineNuxtPlugin } from '#app/nuxt'
+${polyfills.map((p) => `import '${p}'`).join("\n")}
+
+export default defineNuxtPlugin({
+  name: 'nuxt-legacy:custom-polyfills-plugin',
+  setup () {}
+})
+    `.trim()
+  });
+}
+
+function normalizeSlash(path) {
+  return path.replace(/\\/g, "/");
+}
+function toFilePath(id) {
+  if (!id.startsWith("file://")) {
+    return normalizeSlash(normalize(id));
+  }
+  return normalizeSlash(fileURLToPath(id));
+}
+const NODE_MODULES_RE = /^(.+\/node_modules\/)([^/@]+|@[^/]+\/[^/]+)(\/?.*?)?$/;
+function parseNodeModulePath(path) {
+  if (!path) {
+    return {};
+  }
+  path = toFilePath(path);
+  const match = NODE_MODULES_RE.exec(path);
+  if (!match) {
+    return {};
+  }
+  const [, dir, name, subpath] = match;
+  return {
+    dir,
+    name,
+    subpath: subpath ? `.${subpath}` : void 0
+  };
+}
+
+function getNuxtMajorVersion(nuxt) {
+  const match = String(nuxt._version ?? "").match(/^\d+/);
+  return match ? Number.parseInt(match[0], 10) : 0;
+}
+
+const OXC_BASELINE = {
+  and_chr: "80",
+  and_ff: "79",
+  chrome: "80",
+  edge: "80",
+  firefox: "74",
+  ie: "12",
+  ie_mob: "12",
+  ios_saf: "13.4",
+  op_mob: "64",
+  opera: "67",
+  safari: "13.1",
+  samsung: "13"
+};
+function versionBelow(actual, required) {
+  const [aMajor = 0, aMinor = 0] = actual.split(".").map((n) => Number.parseInt(n, 10) || 0);
+  const [rMajor = 0, rMinor = 0] = required.split(".").map((n) => Number.parseInt(n, 10) || 0);
+  return aMajor < rMajor || aMajor === rMajor && aMinor < rMinor;
+}
+function targetsBelowOxcBaseline(targets, rootDir) {
+  let list;
+  try {
+    const configuredTargets = targets || (rootDir ? browserslist.loadConfig({ path: rootDir }) : void 0);
+    if (!configuredTargets) {
+      return false;
+    }
+    list = browserslist(configuredTargets);
+  } catch {
+    return false;
+  }
+  return list.some((entry) => {
+    const match = entry.match(/^([a-z_]+)\s+(\d+(?:\.\d+)*)(?:-\d+(?:\.\d+)*)?$/i);
+    if (!match) {
+      return false;
+    }
+    const name = match[1].toLowerCase();
+    const required = OXC_BASELINE[name];
+    if (!required) {
+      return false;
+    }
+    return versionBelow(match[2], required);
+  });
+}
+
+async function getViteMajor(nuxt) {
+  if (nuxt.options.builder !== "@nuxt/vite-builder") {
+    return 0;
+  }
+  try {
+    const builderEntry = await resolvePath("@nuxt/vite-builder", {
+      cwd: nuxt.options.rootDir
+    });
+    const require = createRequire(builderEntry);
+    const packagePath = require.resolve("vite/package.json");
+    const pkg = JSON.parse(await readFile(packagePath, "utf8"));
+    const major = Number.parseInt(String(pkg.version ?? "").match(/^\d+/)?.[0] ?? "", 10);
+    return Number.isInteger(major) ? major : 0;
+  } catch {
+    return 0;
+  }
+}
+
+const LEGACY_SCRIPT_REGEX = /-legacy\.js$/;
+async function detectPluginLegacyVersion(resolvedEntry) {
+  try {
+    const { dir, name } = parseNodeModulePath(resolvedEntry);
+    if (!dir || !name) {
+      return { major: 0 };
+    }
+    const pkg = JSON.parse(await readFile(join(dir, name, "package.json"), "utf8"));
+    const major = Number.parseInt(String(pkg.version ?? "").match(/^\d+/)?.[0] ?? "", 10);
+    if (!Number.isInteger(major)) {
+      return { major: 0 };
+    }
+    return { major, version: pkg.version };
+  } catch {
+    return { major: 0 };
+  }
+}
+async function checkPluginLegacyCompatibility(actualMajor, actualVersion, viteMajor) {
+  if (!actualMajor || !viteMajor) {
+    return "ok";
+  }
+  const tooNew = actualMajor > viteMajor;
+  const tooOld = actualMajor < viteMajor;
+  if (!tooNew && !tooOld) {
+    return "ok";
+  }
+  const versionLabel = actualVersion ?? String(actualMajor);
+  const status = tooNew ? "too-new" : "too-old";
+  const expectedRange = `^${viteMajor}.0.0`;
+  const detail = tooOld ? `It has been disabled to avoid a build failure \u2014 legacy browser support is unavailable until you upgrade.` : "";
+  useLogger("@teages/nuxt-legacy").warn([
+    `Detected @vitejs/plugin-legacy@${versionLabel}, which is ${tooNew ? "too new" : "too old"} for Vite ${viteMajor}.`,
+    `Please install @vitejs/plugin-legacy@${expectedRange} to avoid compatibility issues.`,
+    detail
+  ].filter(Boolean).join(" "));
+  return status;
+}
+function patchForEnvironmentApi(nuxt, plugins) {
+  const usesEnvironmentApi = nuxt.options.experimental.viteEnvironmentApi || getNuxtMajorVersion(nuxt) >= 5;
+  if (!usesEnvironmentApi) {
+    return plugins;
+  }
+  return plugins.map((plugin) => {
+    const userConfigResolved = plugin.configResolved;
+    if (typeof userConfigResolved !== "function" && typeof userConfigResolved?.handler !== "function") {
+      return plugin;
+    }
+    const handler = typeof userConfigResolved === "function" ? userConfigResolved : userConfigResolved.handler;
+    function configResolved(config) {
+      if (config?.build?.ssr) {
+        return;
+      }
+      return handler.call(this, config);
+    }
+    return {
+      ...plugin,
+      configResolved: typeof userConfigResolved === "function" ? configResolved : { ...userConfigResolved, handler: configResolved }
+    };
+  });
+}
+async function setupVite(options, nuxt, moduleResolver, packageName = "@vitejs/plugin-legacy") {
+  let resolved;
+  try {
+    resolved = await resolvePath(packageName);
+  } catch (cause) {
+    throw new Error(`[@teages/nuxt-legacy] failed to resolve ${packageName}`, { cause });
+  }
+  const { major: pluginMajor, version: pluginVersion } = await detectPluginLegacyVersion(resolved);
+  const viteMajor = await getViteMajor(nuxt);
+  if (await checkPluginLegacyCompatibility(pluginMajor, pluginVersion, viteMajor) === "too-old") {
+    return pluginMajor;
+  }
+  const minify = nuxt.options.vite?.build?.minify;
+  const usesOxc = minify === void 0 || minify === true || minify === "oxc";
+  if (usesOxc && targetsBelowOxcBaseline(options.targets, nuxt.options.rootDir)) {
+    useLogger("@teages/nuxt-legacy").warn(
+      `Legacy targets include browsers below oxc's effective baseline (Chrome <80, Firefox <74, Safari <13.1). plugin-legacy 8.1+ on Vite 8 uses oxc to minify legacy chunks, which may undo babel/preset-env's transpilation of ES2020-era syntax (e.g. \`?.\`, \`??\`) \u2014 these browsers can't parse the output. Set \`vite.build.minify: 'terser'\` in your nuxt.config.ts to restore support.`
+    );
+  }
+  let legacy;
+  try {
+    legacy = await import(pathToFileURL(resolved).href).then((m) => m.default || m);
+  } catch (cause) {
+    throw new Error(`[@teages/nuxt-legacy] failed to load ${packageName}`, { cause });
+  }
+  nuxt.options.vite ??= {};
+  nuxt.options.vite.plugins ??= [];
+  const resolvedLegacy = legacy(options);
+  const legacyPlugins = Array.isArray(resolvedLegacy) ? resolvedLegacy : [resolvedLegacy];
+  nuxt.options.vite.plugins.unshift(...patchForEnvironmentApi(nuxt, legacyPlugins));
+  nuxt.hook("build:manifest", (manifest) => {
+    const manifestEntities = Object.entries(manifest);
+    Object.keys(manifest).forEach((key) => delete manifest[key]);
+    manifestEntities.forEach(([_key, meta]) => {
+      if (!meta.file.endsWith("-legacy.js")) {
+        return;
+      }
+      Object.assign(meta, {
+        module: false,
+        prefetch: false,
+        preload: false
+      });
+      if (meta.name === "polyfills") {
+        meta.file = meta.file.replace(LEGACY_SCRIPT_REGEX, "-legacy.js#polyfills");
+      }
+    });
+    const polyfillEntities = manifestEntities.filter(([_key, meta]) => meta.name === "polyfills");
+    polyfillEntities.forEach(
+      ([key]) => manifestEntities.splice(manifestEntities.findIndex(([k]) => k === key), 1)
+    );
+    manifestEntities.unshift(...polyfillEntities);
+    Object.assign(manifest, Object.fromEntries(manifestEntities));
+  });
+  if (options.renderLegacyChunks ?? true) {
+    addServerPlugin(moduleResolver.resolve("./runtime/server/plugin/vite-legacy"));
+  }
+  return pluginMajor;
+}
+
+const hash = crypto.hash ?? ((algorithm, data, outputEncoding) => crypto.createHash(algorithm).update(data).digest(outputEncoding));
+const cspHashes = [
+  safari10NoModuleFix,
+  systemJSInlineCode,
+  detectModernBrowserCode,
+  dynamicFallbackInlineCode
+].map((i) => hash("sha256", i, "base64"));
+
+const module$1 = defineNuxtModule({
+  meta: {
+    name: "@teages/nuxt-legacy",
+    configKey: "legacy",
+    compatibility: { nuxt: ">=4.5.0" }
+  },
+  defaults: {},
+  async setup(options, nuxt) {
+    const moduleResolver = createResolver(import.meta.url);
+    let pluginLegacyMajor = 0;
+    if (options.vite && nuxt.options.builder === "@nuxt/vite-builder") {
+      pluginLegacyMajor = await setupVite(options.vite, nuxt, moduleResolver, options.viteLegacyPackageName) ?? 0;
+    }
+    await setupCustomPolyfills(nuxt, options.customPolyfills ?? {});
+    addServerTemplate({
+      filename: "#nuxt-legacy/options.mjs",
+      getContents: () => `export const options = ${JSON.stringify(options)}
+export const pluginLegacyMajor = ${pluginLegacyMajor}`
+    });
+  }
+});
+
+export { cspHashes, module$1 as default };

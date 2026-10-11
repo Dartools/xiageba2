@@ -1,0 +1,43 @@
+type __VLS_Props = {
+    /**
+     * The GeoJSON source. Can be a URL string or a GeoJSON object.
+     * @see https://developers.google.com/maps/documentation/javascript/datalayer#load_geojson
+     */
+    src: string | object;
+    /**
+     * Styling options or a function that computes styles per feature.
+     * @see https://developers.google.com/maps/documentation/javascript/datalayer#style_geojson_data
+     */
+    style?: google.maps.Data.StylingFunction | google.maps.Data.StyleOptions;
+};
+declare const __VLS_export: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
+    click: (payload: google.maps.Data.MouseEvent) => any;
+    contextmenu: (payload: google.maps.Data.MouseEvent) => any;
+    dblclick: (payload: google.maps.Data.MouseEvent) => any;
+    mousedown: (payload: google.maps.Data.MouseEvent) => any;
+    mousemove: (payload: google.maps.Data.MouseEvent) => any;
+    mouseout: (payload: google.maps.Data.MouseEvent) => any;
+    mouseover: (payload: google.maps.Data.MouseEvent) => any;
+    mouseup: (payload: google.maps.Data.MouseEvent) => any;
+    addfeature: (payload: google.maps.Data.AddFeatureEvent) => any;
+    removefeature: (payload: google.maps.Data.RemoveFeatureEvent) => any;
+    setgeometry: (payload: google.maps.Data.SetGeometryEvent) => any;
+    setproperty: (payload: google.maps.Data.SetPropertyEvent) => any;
+    removeproperty: (payload: google.maps.Data.RemovePropertyEvent) => any;
+}, string, import("vue").PublicProps, Readonly<__VLS_Props> & Readonly<{
+    onClick?: ((payload: google.maps.Data.MouseEvent) => any) | undefined;
+    onContextmenu?: ((payload: google.maps.Data.MouseEvent) => any) | undefined;
+    onDblclick?: ((payload: google.maps.Data.MouseEvent) => any) | undefined;
+    onMousedown?: ((payload: google.maps.Data.MouseEvent) => any) | undefined;
+    onMousemove?: ((payload: google.maps.Data.MouseEvent) => any) | undefined;
+    onMouseout?: ((payload: google.maps.Data.MouseEvent) => any) | undefined;
+    onMouseover?: ((payload: google.maps.Data.MouseEvent) => any) | undefined;
+    onMouseup?: ((payload: google.maps.Data.MouseEvent) => any) | undefined;
+    onAddfeature?: ((payload: google.maps.Data.AddFeatureEvent) => any) | undefined;
+    onRemovefeature?: ((payload: google.maps.Data.RemoveFeatureEvent) => any) | undefined;
+    onSetgeometry?: ((payload: google.maps.Data.SetGeometryEvent) => any) | undefined;
+    onSetproperty?: ((payload: google.maps.Data.SetPropertyEvent) => any) | undefined;
+    onRemoveproperty?: ((payload: google.maps.Data.RemovePropertyEvent) => any) | undefined;
+}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+declare const _default: typeof __VLS_export;
+export default _default;

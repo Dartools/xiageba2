@@ -1,0 +1,42 @@
+import { tryOnScopeDispose } from "@vueuse/shared";
+export function useScriptTriggerServiceWorker(options) {
+  if (import.meta.server)
+    return new Promise(() => {
+    });
+  const timeout = options?.timeout ?? 3e3;
+  return new Promise((resolve) => {
+    if (!("serviceWorker" in navigator)) {
+      resolve(true);
+      return;
+    }
+    let settled = false;
+    let timer;
+    const cleanup = () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      if (timer !== void 0) {
+        clearTimeout(timer);
+        timer = void 0;
+      }
+    };
+    const done = (value) => {
+      if (settled)
+        return;
+      settled = true;
+      cleanup();
+      resolve(value);
+    };
+    function onControllerChange() {
+      done(true);
+    }
+    tryOnScopeDispose(() => done(false));
+    if (navigator.serviceWorker.controller) {
+      done(true);
+      return;
+    }
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    timer = setTimeout(() => {
+      console.warn("[nuxt-scripts] Service worker not controlling after timeout, loading scripts anyway");
+      done(true);
+    }, timeout);
+  });
+}

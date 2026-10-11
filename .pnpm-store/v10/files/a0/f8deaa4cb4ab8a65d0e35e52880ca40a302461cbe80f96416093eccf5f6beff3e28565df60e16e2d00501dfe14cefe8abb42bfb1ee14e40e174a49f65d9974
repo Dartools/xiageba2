@@ -1,0 +1,365 @@
+const FULL_PRIVACY = { ip: true, userAgent: true, language: true, screen: true, timezone: true, hardware: true };
+const NO_PRIVACY = { ip: false, userAgent: false, language: false, screen: false, timezone: false, hardware: false };
+const MAJOR_VERSION_RE = /^(\d+)/;
+const VERSION_RE = /^(\d+)(([.\-_])\d+)*/;
+const VERSION_SPLIT_RE = /[.\-_]/;
+const SNAPCHAT_VERSION_RE = /("version"\s*:\s*")(\d+(?:\.\d+)*)/g;
+const GA_VERSION_RE = /;(\d+(?:\.\d+)*)/g;
+const UPPERCASE_RE = /^[A-Z]/;
+const LANG_CODE_RE = /^[a-z]{2}(?:-[a-z]{2,})?$/i;
+export function resolvePrivacy(input) {
+  if (input === true)
+    return { ...FULL_PRIVACY };
+  if (input === false || input === void 0)
+    return { ...NO_PRIVACY };
+  return {
+    ip: input.ip ?? false,
+    userAgent: input.userAgent ?? false,
+    language: input.language ?? false,
+    screen: input.screen ?? false,
+    timezone: input.timezone ?? false,
+    hardware: input.hardware ?? false
+  };
+}
+export function mergePrivacy(base, override) {
+  if (override === void 0)
+    return base;
+  if (typeof override === "boolean")
+    return resolvePrivacy(override);
+  return {
+    ip: override.ip !== void 0 ? override.ip : base.ip,
+    userAgent: override.userAgent !== void 0 ? override.userAgent : base.userAgent,
+    language: override.language !== void 0 ? override.language : base.language,
+    screen: override.screen !== void 0 ? override.screen : base.screen,
+    timezone: override.timezone !== void 0 ? override.timezone : base.timezone,
+    hardware: override.hardware !== void 0 ? override.hardware : base.hardware
+  };
+}
+export const IP_HEADERS = [
+  "x-forwarded-for",
+  "x-real-ip",
+  "forwarded",
+  "cf-connecting-ip",
+  "true-client-ip",
+  "x-client-ip",
+  "x-cluster-client-ip"
+];
+export const FINGERPRINT_HEADERS = [
+  "user-agent",
+  "accept-language",
+  "accept-encoding",
+  "sec-ch-ua",
+  "sec-ch-ua-platform",
+  "sec-ch-ua-mobile",
+  "sec-ch-ua-full-version-list"
+];
+export const SENSITIVE_HEADERS = [
+  "cookie",
+  "authorization",
+  "proxy-authorization",
+  "x-csrf-token",
+  "www-authenticate"
+];
+export const STRIP_PARAMS = {
+  // IP addresses — anonymized to subnet
+  ip: ["uip", "ip", "client_ip_address", "ip_address", "user_ip", "ipaddress", "context.ip"],
+  // User identifiers — intentionally preserved for analytics functionality
+  userId: ["uid", "user_id", "userid", "external_id", "cid", "_gid", "fbp", "fbc", "sid", "session_id", "sessionid", "pl_id", "p_user_id", "uuid", "anonymousid", "twclid", "u_c1", "u_sclid", "u_scsid"],
+  // User data (PII) — intentionally preserved; hashed by analytics SDKs before sending
+  userData: ["ud", "user_data", "userdata", "email", "phone", "traits.email", "traits.phone"],
+  // Screen/Hardware — generalized to common buckets
+  screen: ["sr", "vp", "sd", "screen", "viewport", "colordepth", "pixelratio", "sh", "sw"],
+  // Hardware capabilities — generalized to common buckets
+  hardware: ["hardwareconcurrency", "devicememory", "cpu", "mem"],
+  // Platform identifiers — low entropy, kept as-is (e.g. "Linux", "x86")
+  platform: ["plat", "platform", "d_a", "d_ot"],
+  // Version strings — generalized to major version only (d_os = Snapchat OS version, uapv = GA platform version)
+  version: ["d_os", "uapv"],
+  // Browser version lists — generalized to major versions (d_bvs = Snapchat, uafvl = GA Client Hints)
+  browserVersion: ["d_bvs", "uafvl"],
+  // Browser data lists — replaced with empty value
+  browserData: ["plugins", "fonts", "audiofingerprint"],
+  // Location/Timezone — generalized
+  location: ["tz", "timezone", "timezoneoffset"],
+  // Canvas/WebGL fingerprints — neutralized at build time via AST rewriting (rewrite-ast.ts).
+  // These params are no longer stripped at runtime; the source APIs (toDataURL, WEBGL_debug_renderer_info)
+  // are neutralized before the script ever runs.
+  // canvas: ['canvas', 'webgl'],
+  // Combined device fingerprinting (X/Twitter dv param contains: timezone, locale, vendor, platform, screen, etc.)
+  deviceInfo: ["dv", "device_info", "deviceinfo"]
+};
+export const NORMALIZE_PARAMS = {
+  language: ["ul", "lang", "language", "languages"],
+  userAgent: ["ua", "useragent", "user_agent", "client_user_agent", "context.useragent"]
+};
+function expandIPv6(address) {
+  const halves = address.split("::");
+  if (halves.length > 2)
+    return;
+  const left = halves[0] ? halves[0].split(":") : [];
+  const right = halves[1] ? halves[1].split(":") : [];
+  const valid = (part) => /^[\da-f]{1,4}$/i.test(part);
+  if (!left.every(valid) || !right.every(valid))
+    return;
+  if (halves.length === 1)
+    return left.length === 8 ? left : void 0;
+  const missing = 8 - left.length - right.length;
+  if (missing < 1)
+    return;
+  return [...left, ...Array.from({ length: missing }).fill("0"), ...right];
+}
+export function anonymizeIP(ip) {
+  if (ip.includes(":")) {
+    const normalized = ip.split("%", 1)[0] || "";
+    const mappedIPv4 = normalized.match(/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i)?.[1];
+    if (mappedIPv4)
+      return `::ffff:${anonymizeIP(mappedIPv4)}`;
+    const expanded = expandIPv6(normalized);
+    return expanded ? `${expanded.slice(0, 3).join(":")}::` : normalized;
+  }
+  const parts = ip.split(".");
+  if (parts.length === 4) {
+    parts[3] = "0";
+    return parts.join(".");
+  }
+  return ip;
+}
+export function normalizeUserAgent(ua) {
+  const tokens = [
+    ["Edg/", "Edge"],
+    ["OPR/", "Opera"],
+    ["Opera/", "Opera"],
+    ["Firefox/", "Firefox"],
+    ["Chrome/", "Chrome"],
+    ["Safari/", "Safari"]
+  ];
+  for (const [pattern, family] of tokens) {
+    const idx = ua.indexOf(pattern);
+    if (idx !== -1) {
+      const versionStart = idx + pattern.length;
+      const majorVersion = ua.slice(versionStart).match(MAJOR_VERSION_RE)?.[1];
+      if (majorVersion)
+        return `Mozilla/5.0 (compatible; ${family}/${majorVersion}.0)`;
+    }
+  }
+  return "Mozilla/5.0 (compatible)";
+}
+export function normalizeLanguage(lang) {
+  return lang.split(",")[0]?.split(";")[0]?.trim() || "en";
+}
+const SCREEN_BUCKETS = {
+  desktop: { w: 1920, h: 1080 },
+  tablet: { w: 768, h: 1024 },
+  mobile: { w: 360, h: 640 }
+};
+function getDeviceClass(width) {
+  if (width >= 1200)
+    return "desktop";
+  if (width >= 700)
+    return "tablet";
+  return "mobile";
+}
+export function generalizeScreen(value, dimension) {
+  if (typeof value === "string" && value.includes("x")) {
+    const width = Number.parseInt(value.split("x")[0] || "0");
+    const cls = getDeviceClass(width);
+    return `${SCREEN_BUCKETS[cls].w}x${SCREEN_BUCKETS[cls].h}`;
+  }
+  const num = typeof value === "number" ? value : Number(value);
+  if (!Number.isNaN(num)) {
+    const cls = getDeviceClass(num);
+    const bucketed = dimension === "height" ? SCREEN_BUCKETS[cls].h : SCREEN_BUCKETS[cls].w;
+    return typeof value === "number" ? bucketed : String(bucketed);
+  }
+  return "1920x1080";
+}
+export function generalizeHardware(value) {
+  const num = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(num))
+    return 4;
+  if (num >= 16)
+    return 16;
+  if (num >= 8)
+    return 8;
+  if (num >= 4)
+    return 4;
+  return 2;
+}
+export function generalizeVersion(value) {
+  if (typeof value !== "string")
+    return String(value);
+  const match = value.match(VERSION_RE);
+  if (!match)
+    return String(value);
+  const major = match[1];
+  const sep = match[3] || ".";
+  const segmentCount = value.split(VERSION_SPLIT_RE).length;
+  return major + `${sep}0`.repeat(segmentCount - 1);
+}
+export function generalizeBrowserVersions(value) {
+  if (typeof value !== "string")
+    return String(value);
+  const zeroSegments = (ver) => {
+    const parts = ver.split(".");
+    return parts[0] + parts.slice(1).map(() => ".0").join("");
+  };
+  if (value.includes('"version"'))
+    return value.replace(SNAPCHAT_VERSION_RE, (_, prefix, ver) => prefix + zeroSegments(ver));
+  if (value.includes(";"))
+    return value.replace(GA_VERSION_RE, (_, ver) => `;${zeroSegments(ver)}`);
+  return value;
+}
+export function generalizeTimezone(value) {
+  if (typeof value === "number") {
+    return Math.round(value / 180) * 180;
+  }
+  if (typeof value === "string") {
+    return "UTC";
+  }
+  return 0;
+}
+export function anonymizeDeviceInfo(value) {
+  const sep = value.includes("|") ? "|" : "&";
+  const parts = value.split(sep);
+  if (parts.length < 4)
+    return value;
+  const result = [...parts];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (part.includes("/") && UPPERCASE_RE.test(part)) {
+      result[i] = String(generalizeTimezone(part));
+      continue;
+    }
+    if (LANG_CODE_RE.test(part)) {
+      result[i] = normalizeLanguage(part);
+      continue;
+    }
+    const num = Number(part);
+    if (!Number.isNaN(num) && num >= 300 && num <= 1e4) {
+      const nextNum = Number(parts[i + 1]);
+      if (!Number.isNaN(nextNum) && nextNum >= 300 && nextNum <= 1e4) {
+        const cls = getDeviceClass(num);
+        result[i] = String(SCREEN_BUCKETS[cls].w);
+        result[i + 1] = String(SCREEN_BUCKETS[cls].h);
+        i++;
+        continue;
+      }
+      result[i] = String(generalizeScreen(num));
+      continue;
+    }
+    if (!Number.isNaN(num) && num < -60) {
+      result[i] = String(generalizeTimezone(num));
+    }
+  }
+  return result.join(sep);
+}
+function matchesParam(key, params) {
+  const lk = key.toLowerCase();
+  return params.some((pm) => {
+    const lp = pm.toLowerCase();
+    return lk === lp || lk.startsWith(`${lp}[`);
+  });
+}
+function mapValue(value, transform) {
+  return Array.isArray(value) ? value.map(transform) : transform(value);
+}
+function mapString(value, transform) {
+  return mapValue(value, (item) => typeof item === "string" ? transform(item) : item);
+}
+export function stripPayloadFingerprinting(payload, privacy) {
+  const p = privacy || FULL_PRIVACY;
+  const result = /* @__PURE__ */ Object.create(null);
+  let deviceClasses = [];
+  for (const [key, value] of Object.entries(payload)) {
+    if (key.toLowerCase() === "sw") {
+      const widths = Array.isArray(value) ? value : [value];
+      deviceClasses = widths.map((width) => {
+        const num = typeof width === "number" ? width : Number(width);
+        return Number.isNaN(num) ? void 0 : getDeviceClass(num);
+      });
+    }
+  }
+  for (const [key, value] of Object.entries(payload)) {
+    const lowerKey = key.toLowerCase();
+    const isLanguageParam = NORMALIZE_PARAMS.language.some((pm) => lowerKey === pm.toLowerCase());
+    if (isLanguageParam) {
+      if (Array.isArray(value)) {
+        result[key] = p.language ? value.map((v) => typeof v === "string" ? normalizeLanguage(v) : v) : value;
+      } else if (typeof value === "string") {
+        result[key] = p.language ? normalizeLanguage(value) : value;
+      } else {
+        result[key] = value;
+      }
+      continue;
+    }
+    const isUserAgentParam = NORMALIZE_PARAMS.userAgent.some((pm) => lowerKey === pm.toLowerCase());
+    if (isUserAgentParam) {
+      result[key] = p.userAgent ? mapString(value, normalizeUserAgent) : value;
+      continue;
+    }
+    if (matchesParam(key, STRIP_PARAMS.ip)) {
+      result[key] = p.ip ? mapString(value, anonymizeIP) : value;
+      continue;
+    }
+    if (matchesParam(key, STRIP_PARAMS.screen)) {
+      if (!p.screen) {
+        result[key] = value;
+        continue;
+      }
+      if (["sd", "colordepth", "pixelratio"].includes(lowerKey)) {
+        result[key] = value;
+      } else if (lowerKey === "sh" && deviceClasses.length > 0) {
+        const generalizePairedHeight = (item, index) => {
+          const deviceClass = deviceClasses[index] ?? deviceClasses[0];
+          if (!deviceClass)
+            return generalizeScreen(item, "height");
+          const paired = SCREEN_BUCKETS[deviceClass].h;
+          return typeof item === "number" ? paired : String(paired);
+        };
+        result[key] = Array.isArray(value) ? value.map(generalizePairedHeight) : generalizePairedHeight(value, 0);
+      } else {
+        const dimension = lowerKey === "sw" ? "width" : lowerKey === "sh" ? "height" : void 0;
+        result[key] = mapValue(value, (item) => generalizeScreen(item, dimension));
+      }
+      continue;
+    }
+    if (matchesParam(key, STRIP_PARAMS.hardware)) {
+      result[key] = p.hardware ? mapValue(value, generalizeHardware) : value;
+      continue;
+    }
+    if (matchesParam(key, STRIP_PARAMS.version)) {
+      result[key] = p.hardware ? mapValue(value, generalizeVersion) : value;
+      continue;
+    }
+    if (matchesParam(key, STRIP_PARAMS.browserVersion)) {
+      result[key] = p.hardware ? mapValue(value, generalizeBrowserVersions) : value;
+      continue;
+    }
+    if (matchesParam(key, STRIP_PARAMS.location)) {
+      result[key] = p.timezone ? mapValue(value, generalizeTimezone) : value;
+      continue;
+    }
+    if (matchesParam(key, STRIP_PARAMS.browserData)) {
+      result[key] = p.hardware ? Array.isArray(value) ? [] : typeof value === "number" ? 0 : "" : value;
+      continue;
+    }
+    if (matchesParam(key, STRIP_PARAMS.deviceInfo)) {
+      result[key] = p.hardware ? mapValue(value, (item) => typeof item === "string" ? anonymizeDeviceInfo(item) : "") : value;
+      continue;
+    }
+    if (matchesParam(key, STRIP_PARAMS.platform)) {
+      result[key] = value;
+      continue;
+    }
+    if (Array.isArray(value)) {
+      result[key] = value.map(
+        (item) => typeof item === "object" && item !== null ? stripPayloadFingerprinting(item, privacy) : item
+      );
+    } else if (typeof value === "object" && value !== null) {
+      result[key] = stripPayloadFingerprinting(value, privacy);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}

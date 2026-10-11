@@ -1,0 +1,67 @@
+import { selectSnippets } from "../../snippets/index.js";
+const LEGACY_SCRIPT_REGEX = /<script [^>]*src="([^"]+-legacy\.js)"[^>]*><\/script>\s*/g;
+const LEGACY_POLYFILL_SCRIPT_REGEX = /<script[^>]*src="([^"]+-legacy\.js#polyfills)"[^>]*><\/script>\s*/g;
+const POLYFILL_END_MATCH_REGEX = /#polyfills$/;
+export default ((nitro) => {
+  nitro.hooks.hook("render:html", async (html) => {
+    const { options, pluginLegacyMajor } = await import("#nuxt-legacy/options.mjs").then((m) => m);
+    const genModern = options.vite?.renderModernChunks !== false;
+    const genLegacy = options.vite?.renderLegacyChunks !== false;
+    if (!genLegacy) {
+      return;
+    }
+    const { detectModernBrowserCode, dynamicFallbackInlineCode, legacyEntryId, legacyPolyfillId, safari10NoModuleFix } = selectSnippets(pluginLegacyMajor);
+    const legacyScripts = [];
+    const polyfillScripts = [];
+    const todo = [];
+    for (const index in html.head) {
+      const matchLegacy = html.head[index].matchAll(LEGACY_SCRIPT_REGEX);
+      [...matchLegacy].forEach((match) => {
+        if (match) {
+          const [full, src] = match;
+          if (src) {
+            legacyScripts.push(src);
+          }
+          todo.push(() => {
+            if (html.head[index]) {
+              html.head[index] = html.head[index].replace(full, "");
+            }
+          });
+        }
+      });
+      const matchPolyfill = html.head[index].matchAll(LEGACY_POLYFILL_SCRIPT_REGEX);
+      [...matchPolyfill].forEach((match) => {
+        if (match) {
+          const [full, src] = match;
+          if (src) {
+            polyfillScripts.push(src.replace(POLYFILL_END_MATCH_REGEX, ""));
+          }
+          todo.push(() => {
+            if (html.head[index]) {
+              html.head[index] = html.head[index].replace(full, "");
+            }
+          });
+        }
+      });
+    }
+    if (polyfillScripts.length === 1 && legacyScripts.length === 1) {
+      const [polyfillSrc] = polyfillScripts;
+      const [legacySrc] = legacyScripts;
+      const legacyScripType = genModern ? "script nomodule" : "script";
+      if (genModern) {
+        html.head.push(
+          `<script type="module">${detectModernBrowserCode}<\/script>`,
+          `<script type="module">${dynamicFallbackInlineCode}<\/script>`
+        );
+        html.bodyAppend.push(
+          `<script nomodule>${safari10NoModuleFix}<\/script>`
+        );
+      }
+      html.bodyAppend.push(
+        `<${legacyScripType} crossorigin id="${legacyPolyfillId}" src="${polyfillSrc}"><\/script>`,
+        `<${legacyScripType} crossorigin id="${legacyEntryId}" data-src="${legacySrc}">System.import(document.getElementById('${legacyEntryId}').getAttribute('data-src'))<\/script>`
+      );
+      todo.forEach((fn) => fn());
+    }
+  });
+});

@@ -1,0 +1,8 @@
+export declare const safari10NoModuleFix: string;
+export declare const legacyPolyfillId = "vite-legacy-polyfill";
+export declare const legacyEntryId = "vite-legacy-entry";
+export declare const systemJSInlineCode: string;
+export declare const detectModernBrowserDetector: string;
+export declare const detectModernBrowserCode: string;
+export declare const dynamicFallbackInlineCode: string;
+export declare const modernChunkLegacyGuard: string;

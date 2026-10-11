@@ -1,0 +1,2 @@
+export * from '@comark/vue/plugins/mermaid';
+export { default } from '@comark/vue/plugins/mermaid';

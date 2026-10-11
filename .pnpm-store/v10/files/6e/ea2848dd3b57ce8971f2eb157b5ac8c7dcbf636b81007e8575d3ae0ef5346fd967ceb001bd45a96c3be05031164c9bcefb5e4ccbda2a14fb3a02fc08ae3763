@@ -1,0 +1,63 @@
+export function createAbortError(message = "Operation aborted") {
+  const error = new Error(message);
+  error.name = "AbortError";
+  return error;
+}
+export function createAbortablePromise(setup, options = {}) {
+  const { signal, abortMessage } = options;
+  return new Promise((outerResolve, outerReject) => {
+    let settled = false;
+    let cleanup;
+    let onAbort;
+    const finish = (settle, value) => {
+      if (settled)
+        return;
+      settled = true;
+      signal?.removeEventListener("abort", onAbort);
+      const currentCleanup = cleanup;
+      cleanup = void 0;
+      try {
+        currentCleanup?.();
+      } catch (error) {
+        outerReject(error);
+        return;
+      }
+      settle(value);
+    };
+    const reject = (reason) => finish(outerReject, reason);
+    const resolve = (value) => {
+      if (typeof value === "object" && value !== null || typeof value === "function") {
+        let then;
+        try {
+          then = value.then;
+        } catch (error) {
+          reject(error);
+          return;
+        }
+        if (typeof then === "function") {
+          Promise.resolve(value).then(
+            (resolved) => finish(outerResolve, resolved),
+            reject
+          );
+          return;
+        }
+      }
+      finish(outerResolve, value);
+    };
+    onAbort = () => reject(createAbortError(abortMessage));
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
+    try {
+      cleanup = setup(resolve, reject) || void 0;
+      if (settled) {
+        cleanup?.();
+        cleanup = void 0;
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}

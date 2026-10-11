@@ -1,0 +1,1 @@
+export const MARKER_CLUSTERER_INJECTION_KEY = Symbol("marker-clusterer");

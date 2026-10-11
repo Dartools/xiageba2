@@ -1,0 +1,17 @@
+import { defineNuxtPlugin, useRuntimeConfig } from "nuxt/app";
+import { useScriptProxyToken } from "../composables/useScriptProxyToken.js";
+import { generateProxyToken } from "../server/utils/sign.js";
+export default defineNuxtPlugin({
+  name: "nuxt-scripts:proxy-token",
+  enforce: "pre",
+  setup() {
+    const secret = useRuntimeConfig()["nuxt-scripts"]?.proxySecret;
+    if (!secret)
+      return;
+    const ts = Math.floor(Date.now() / 1e3);
+    useScriptProxyToken().value = {
+      token: generateProxyToken(secret, ts),
+      ts
+    };
+  }
+});

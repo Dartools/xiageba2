@@ -1,0 +1,72 @@
+import { ref } from "vue";
+import { logger } from "./logger.js";
+export function createNpmScriptStub(options) {
+  const status = ref("awaitingLoad");
+  const loadedCallbacks = [];
+  let hasInitialized = false;
+  const proxy = options.use?.() || {};
+  const stub = {
+    status,
+    proxy,
+    async load() {
+      if (hasInitialized || status.value !== "awaitingLoad")
+        return;
+      hasInitialized = true;
+      status.value = "loading";
+      try {
+        if (options.clientInit) {
+          console.log(`[NpmScriptStub] Initializing ${options.key}...`);
+          await options.clientInit();
+          console.log(`[NpmScriptStub] ${options.key} initialized successfully`);
+        }
+        status.value = "loaded";
+        loadedCallbacks.splice(0).forEach((cb) => {
+          try {
+            cb(proxy);
+          } catch (error) {
+            logger.error(`[NpmScriptStub] Error in onLoaded callback for ${options.key}:`, error);
+          }
+        });
+      } catch (error) {
+        loadedCallbacks.splice(0);
+        logger.error(`[NpmScriptStub] Failed to initialize ${options.key}:`, error);
+        status.value = "error";
+      }
+    },
+    onLoaded(callback) {
+      if (status.value === "loaded") {
+        callback(proxy);
+      } else if (status.value !== "error") {
+        loadedCallbacks.push(callback);
+      }
+    },
+    // Mock $script for compatibility with useScript API
+    get $script() {
+      return {
+        status: status.value,
+        load: stub.load
+      };
+    }
+  };
+  if (options.trigger) {
+    if (typeof options.trigger === "function") {
+      const res = options.trigger(() => stub.load());
+      if (res && typeof res === "object" && "then" in res)
+        res.then(() => stub.load());
+    } else if (options.trigger === "manual") {
+    } else if (options.trigger === "onNuxtReady") {
+      import("nuxt/app").then(({ onNuxtReady }) => {
+        onNuxtReady(() => stub.load());
+      });
+    } else if (options.trigger === "client") {
+      if (import.meta.client) {
+        stub.load();
+      }
+    }
+  } else {
+    if (import.meta.client) {
+      stub.load();
+    }
+  }
+  return stub;
+}

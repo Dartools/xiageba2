@@ -1,0 +1,33 @@
+import * as _nuxt_schema from '@nuxt/schema';
+import { Options } from '@vitejs/plugin-legacy';
+
+interface CustomPolyfillsOptions {
+    /**
+     * Array of polyfill file paths to be imported
+     */
+    polyfills?: string[];
+    /**
+     * Directories to scan for polyfill files
+     *
+     * This dir is relative to the project `srcDir`.
+     * @default ['polyfills']
+     */
+    scanDirs?: string[];
+}
+
+declare const cspHashes: string[];
+
+interface ModuleOptions {
+    vite?: Options;
+    customPolyfills?: CustomPolyfillsOptions;
+    /**
+     * Overrides the resolved `@vitejs/plugin-legacy` package name (tests only).
+     *
+     * @internal
+     */
+    viteLegacyPackageName?: string;
+}
+declare const _default: _nuxt_schema.NuxtModule<ModuleOptions, ModuleOptions, false>;
+
+export { cspHashes, _default as default };
+export type { ModuleOptions };

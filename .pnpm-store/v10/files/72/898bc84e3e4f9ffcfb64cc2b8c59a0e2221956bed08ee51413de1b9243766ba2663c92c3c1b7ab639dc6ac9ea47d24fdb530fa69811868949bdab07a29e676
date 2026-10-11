@@ -1,0 +1,140 @@
+import { whenever } from "@vueuse/core";
+import { effectScope, inject, onUnmounted, ref, shallowRef, watch } from "vue";
+import { createAbortablePromise, createAbortError } from "../../utils/abortable-promise.js";
+export const MAP_INJECTION_KEY = Symbol("map");
+export const MARKER_INJECTION_KEY = Symbol("marker");
+export function bindGoogleMapsEvents(instance, emit, config) {
+  config.noPayload?.forEach((event) => {
+    instance.addListener(event, () => emit(event));
+  });
+  config.withPayload?.forEach((event) => {
+    instance.addListener(event, (payload) => emit(event, payload));
+  });
+}
+export function normalizeLatLng(p) {
+  if (typeof p.lat === "function") {
+    const ll = p;
+    return { lat: ll.lat(), lng: ll.lng() };
+  }
+  return { lat: p.lat, lng: p.lng };
+}
+export function defineDeprecatedAlias(target, alias, canonicalKey, message) {
+  let warned = false;
+  Object.defineProperty(target, alias, {
+    get() {
+      if (!warned) {
+        warned = true;
+        console.warn(message);
+      }
+      return target[canonicalKey];
+    },
+    enumerable: true,
+    configurable: true
+  });
+  return target;
+}
+export function warnDeprecatedTopLevelMapProps(props) {
+  let warned = 0;
+  if (props.center !== void 0) {
+    warned++;
+    console.warn(
+      '[nuxt-scripts] <ScriptGoogleMaps> prop "center" is deprecated; use `:map-options="{ center: ... }"` instead. See https://scripts.nuxt.com/docs/migration-guide/v0-to-v1'
+    );
+  }
+  if (props.zoom !== void 0) {
+    warned++;
+    console.warn(
+      '[nuxt-scripts] <ScriptGoogleMaps> prop "zoom" is deprecated; use `:map-options="{ zoom: ... }"` instead. See https://scripts.nuxt.com/docs/migration-guide/v0-to-v1'
+    );
+  }
+  return warned;
+}
+export async function waitForMapsReady({
+  mapsApi,
+  map,
+  status,
+  load,
+  signal
+}) {
+  const abortMessage = "Google Maps readiness wait was aborted";
+  const throwIfAborted = () => {
+    if (signal?.aborted)
+      throw createAbortError(abortMessage);
+  };
+  throwIfAborted();
+  if (mapsApi.value && map.value)
+    return;
+  if (status.value === "error")
+    throw new Error("Google Maps script failed to load");
+  await createAbortablePromise((resolve, reject) => {
+    Promise.resolve(load()).then(() => resolve(), reject);
+  }, { signal, abortMessage });
+  throwIfAborted();
+  if (mapsApi.value && map.value)
+    return;
+  if (status.value === "error")
+    throw new Error("Google Maps script failed to load");
+  const scope = effectScope(true);
+  await createAbortablePromise((resolve, reject) => {
+    scope.run(() => {
+      watch(
+        [mapsApi, map, status],
+        ([api, m, s]) => {
+          if (api && m) {
+            resolve();
+            return;
+          }
+          if (s === "error")
+            reject(new Error("Google Maps script failed to load"));
+        },
+        { immediate: true }
+      );
+    });
+    return () => scope.stop();
+  }, { signal, abortMessage });
+}
+export function useGoogleMapsResource({
+  ready,
+  create,
+  cleanup
+}) {
+  const mapContext = inject(MAP_INJECTION_KEY, void 0);
+  const resource = shallowRef(void 0);
+  const isUnmounted = ref(false);
+  whenever(
+    () => mapContext?.map.value && mapContext.mapsApi.value && (!ready || ready()),
+    () => {
+      let creation;
+      try {
+        creation = Promise.resolve(create({
+          map: mapContext.map.value,
+          mapsApi: mapContext.mapsApi.value
+        }));
+      } catch (error) {
+        creation = Promise.reject(error);
+      }
+      creation.then((result) => {
+        if (isUnmounted.value) {
+          if (cleanup && mapContext?.mapsApi.value) {
+            cleanup(result, { mapsApi: mapContext.mapsApi.value });
+          }
+          return;
+        }
+        resource.value = result;
+      }).catch((err) => {
+        if (import.meta.dev) {
+          console.error("[nuxt-scripts] Google Maps resource creation failed:", err);
+        }
+      });
+    },
+    { immediate: true, once: true }
+  );
+  onUnmounted(() => {
+    isUnmounted.value = true;
+    if (resource.value && cleanup && mapContext?.mapsApi.value) {
+      cleanup(resource.value, { mapsApi: mapContext.mapsApi.value });
+    }
+    resource.value = void 0;
+  });
+  return resource;
+}

@@ -1,0 +1,53 @@
+interface JsonRenderConfig {
+}
+/**
+ * Plugin for rendering [JSON Render](https://json-render.dev/) specs as UI components.
+ *
+ * Transforms `json-render` fenced code blocks into Comark AST nodes at parse time.
+ * Supports both full specs (with `root` and `elements`) and single-element shorthand.
+ *
+ * @param config - Plugin configuration options
+ *
+ * @example
+ * ```ts
+ * import { parseMarkdown } from 'comark'
+ * import jsonRender from 'comark/plugins/json-render'
+ *
+ * const result = await parseMarkdown(`
+ * \`\`\`json-render
+ * {
+ *   "root": "card",
+ *   "elements": {
+ *     "card": {
+ *       "type": "Card",
+ *       "props": { "title": "Hello" },
+ *       "children": ["text"]
+ *     },
+ *     "text": {
+ *       "type": "Text",
+ *       "props": { "content": "World" }
+ *     }
+ *   }
+ * }
+ * \`\`\`
+ * `, {
+ *   plugins: [jsonRender()]
+ * })
+ * ```
+ *
+ * @example
+ * ```vue
+ * <script setup>
+ * import { Markdown } from '@comark/vue'
+ * import jsonRender from '@comark/vue/plugins/json-render'
+ * </script>
+ *
+ * <template>
+ *   <Suspense>
+ *     <Markdown :plugins="[jsonRender()]">{{ content }}</Markdown>
+ *   </Suspense>
+ * </template>
+ * ```
+ */
+declare const _default: import("../types").ComarkPluginFactory<JsonRenderConfig, {}, {}>;
+export default _default;

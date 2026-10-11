@@ -1,0 +1,28 @@
+import type { ComarkPlugin, ComarkPluginFactory } from '../types.ts';
+/**
+ * Returns a function that invokes `fn` **strictly one at a time**: each call waits until the
+ * previous invocation has settled (resolved or rejected) before starting the next.
+ */
+export declare function createSerializedTask<TArgs extends unknown[], TResult>(fn: (...args: TArgs) => Promise<TResult>): (...args: TArgs) => Promise<TResult>;
+/**
+ * Remove duplicate plugins by name, keeping the first occurrence.
+ */
+export declare function dedupePlugins(plugins: ComarkPlugin<any, any>[]): ComarkPlugin<any, any>[];
+/**
+ * Define a Comark plugin.
+ *
+ * `TMeta` and `TFrontmatter` declare what the plugin contributes to
+ * `tree.meta` / `tree.frontmatter`. They are inferred from the factory's
+ * return type when set via the `__meta` / `__frontmatter` phantom markers,
+ * or can be passed explicitly. Plugins that don't contribute typed keys can
+ * omit them entirely.
+ *
+ * @example
+ * ```ts
+ * defineComarkPlugin<Options, { toc: Toc }>((opts) => ({
+ *   name: 'toc',
+ *   post(state) { state.tree.meta.toc = ... },
+ * }))
+ * ```
+ */
+export declare function defineComarkPlugin<Options, TMeta = {}, TFrontmatter = {}>(fn: ComarkPluginFactory<Options, TMeta, TFrontmatter>): ComarkPluginFactory<Options, TMeta, TFrontmatter>;

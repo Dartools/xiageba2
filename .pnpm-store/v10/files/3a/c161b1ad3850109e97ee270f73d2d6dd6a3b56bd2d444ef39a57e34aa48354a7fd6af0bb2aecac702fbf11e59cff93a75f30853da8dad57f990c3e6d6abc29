@@ -1,0 +1,68 @@
+import { BlueskyEmbedOptions } from "./schemas.js";
+export { BlueskyEmbedOptions };
+const BSKY_POST_URL_RE = /bsky\.app\/profile\/([^/]+)\/post\/([^/?]+)/;
+export function extractBlueskyPostId(url) {
+  const match = url.match(BSKY_POST_URL_RE);
+  if (!match)
+    return void 0;
+  return { actor: match[1], rkey: match[2] };
+}
+export function formatBlueskyDate(dateString) {
+  const date = new Date(dateString);
+  const time = date.toLocaleString("en-US", {
+    hour: "numeric",
+    minute: "numeric",
+    hour12: true,
+    timeZone: "UTC"
+  });
+  const month = date.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
+  return `${time} \xB7 ${month} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+}
+export function formatCount(count) {
+  if (count >= 1e6) {
+    return `${(count / 1e6).toFixed(1)}M`;
+  }
+  if (count >= 1e3) {
+    return `${(count / 1e3).toFixed(1)}K`;
+  }
+  return count.toString();
+}
+export function facetsToHtml(text, facets) {
+  if (!facets?.length)
+    return escapeHtml(text);
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+  const bytes = encoder.encode(text);
+  const sorted = facets.toSorted((a, b) => a.index.byteStart - b.index.byteStart);
+  const parts = [];
+  let lastEnd = 0;
+  for (const facet of sorted) {
+    if (facet.index.byteStart > lastEnd) {
+      parts.push(escapeHtml(decoder.decode(bytes.slice(lastEnd, facet.index.byteStart))));
+    }
+    const facetText = escapeHtml(decoder.decode(bytes.slice(facet.index.byteStart, facet.index.byteEnd)));
+    for (const feature of facet.features) {
+      if (feature.$type === "app.bsky.richtext.facet#link" && feature.uri) {
+        parts.push(`<a href="${escapeHtml(feature.uri)}" target="_blank" rel="noopener noreferrer">${facetText}</a>`);
+      } else if (feature.$type === "app.bsky.richtext.facet#mention" && feature.did) {
+        parts.push(`<a href="https://bsky.app/profile/${escapeHtml(feature.did)}" target="_blank" rel="noopener noreferrer">${facetText}</a>`);
+      } else if (feature.$type === "app.bsky.richtext.facet#tag" && feature.tag) {
+        parts.push(`<a href="https://bsky.app/hashtag/${escapeHtml(feature.tag)}" target="_blank" rel="noopener noreferrer">${facetText}</a>`);
+      } else {
+        parts.push(facetText);
+      }
+    }
+    lastEnd = facet.index.byteEnd;
+  }
+  if (lastEnd < bytes.length) {
+    parts.push(escapeHtml(decoder.decode(bytes.slice(lastEnd))));
+  }
+  return parts.join("");
+}
+const AMP_RE = /&/g;
+const LT_RE = /</g;
+const GT_RE = />/g;
+const QUOT_RE = /"/g;
+function escapeHtml(str) {
+  return str.replace(AMP_RE, "&amp;").replace(LT_RE, "&lt;").replace(GT_RE, "&gt;").replace(QUOT_RE, "&quot;");
+}

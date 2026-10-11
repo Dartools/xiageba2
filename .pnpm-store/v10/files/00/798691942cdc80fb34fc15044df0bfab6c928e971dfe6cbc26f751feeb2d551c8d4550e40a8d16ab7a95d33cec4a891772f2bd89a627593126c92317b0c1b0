@@ -1,0 +1,1003 @@
+'use strict';
+
+// src/types.ts
+function validateParamMap(mapping) {
+  if (!Number.isInteger(mapping.index) || mapping.index < 1) {
+    throw new Error(`Invalid ParamMap index: ${mapping.index} (must be integer >= 1)`);
+  }
+  const hasDynamic = mapping.dynamicName !== void 0;
+  const hasStatic = mapping.value !== void 0;
+  if (hasDynamic && hasStatic) {
+    throw new Error(`ParamMap ${mapping.index} has both dynamicName and value`);
+  }
+  if (!hasDynamic && !hasStatic) {
+    throw new Error(`ParamMap ${mapping.index} has neither dynamicName nor value`);
+  }
+}
+
+// src/constants.ts
+var ARRAY_MARKERS = Object.freeze({
+  START: "[",
+  END: "]"
+});
+var FILTER_OPS = /* @__PURE__ */ new Set([
+  "in",
+  "notIn",
+  "has",
+  "hasSome",
+  "hasEvery"
+]);
+var NUMERIC_KEYWORDS = /* @__PURE__ */ new Set([
+  "take",
+  "skip",
+  "limit",
+  "offset",
+  "cursor"
+]);
+var SQL_KEYWORDS = /* @__PURE__ */ new Set([
+  "select",
+  "from",
+  "where",
+  "and",
+  "or",
+  "not",
+  "in",
+  "like",
+  "between",
+  "order",
+  "by",
+  "group",
+  "having",
+  "limit",
+  "offset",
+  "join",
+  "inner",
+  "left",
+  "right",
+  "outer",
+  "on",
+  "as",
+  "table",
+  "column",
+  "index",
+  "user",
+  "users",
+  "values",
+  "update",
+  "insert",
+  "delete",
+  "create",
+  "drop",
+  "alter",
+  "truncate",
+  "grant",
+  "revoke",
+  "exec",
+  "execute"
+]);
+var DANGEROUS_SQL_KEYWORDS = /* @__PURE__ */ new Set([
+  "drop",
+  "delete",
+  "insert",
+  "update",
+  "select",
+  "union",
+  "exec",
+  "execute",
+  "truncate",
+  "grant",
+  "revoke",
+  "alter",
+  "create",
+  "from",
+  "where",
+  "into",
+  "and",
+  "or",
+  "not"
+]);
+var CACHE_TTL = Object.freeze({
+  MIN: 1,
+  MAX: 31536e3,
+  DEFAULT: 300
+});
+var MIN_TTL = CACHE_TTL.MIN;
+var MAX_TTL = CACHE_TTL.MAX;
+
+// src/utils/guards.ts
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.length > 0;
+}
+function exists(value) {
+  return value !== null && value !== void 0;
+}
+function isNullish(value) {
+  return value === null || value === void 0;
+}
+function isPlainObject(value) {
+  if (isNullish(value)) return false;
+  if (typeof value !== "object") return false;
+  if (Array.isArray(value)) return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+function hasMinLength(value, min) {
+  return value.length >= min;
+}
+function isEmpty(value) {
+  return value.length === 0;
+}
+function inRange(value, min, max) {
+  return value >= min && value <= max;
+}
+
+// src/parser.ts
+var DIRECTIVE_MARKER = "@optimize";
+var COMMENT_PREFIX = "///";
+var OPEN_BRACE = "{";
+var CLOSE_BRACE = "}";
+var DOUBLE_QUOTE = '"';
+var BACKSLASH = "\\";
+var NEWLINE = "\n";
+function cleanJsonFromComments(raw) {
+  if (!isNonEmptyString(raw)) return "";
+  return raw.split(NEWLINE).map((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith(COMMENT_PREFIX)) {
+      return trimmed.replace(/^\/\/\/\s?/, "");
+    }
+    return trimmed;
+  }).join(NEWLINE);
+}
+function extractCompleteJson(str) {
+  if (!isNonEmptyString(str)) return null;
+  let braceCount = 0;
+  let inString = false;
+  let escapeNext = false;
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (escapeNext) {
+      escapeNext = false;
+      continue;
+    }
+    if (char === BACKSLASH) {
+      escapeNext = true;
+      continue;
+    }
+    if (char === DOUBLE_QUOTE) {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === OPEN_BRACE) {
+      braceCount++;
+    } else if (char === CLOSE_BRACE) {
+      braceCount--;
+      if (braceCount === 0) {
+        return str.substring(0, i + 1);
+      }
+      if (braceCount < 0) {
+        return null;
+      }
+    }
+  }
+  return null;
+}
+function extractDirectives(documentation) {
+  if (!isNonEmptyString(documentation)) return [];
+  const results = [];
+  let searchFrom = 0;
+  while (searchFrom < documentation.length) {
+    const directiveIndex = documentation.indexOf(DIRECTIVE_MARKER, searchFrom);
+    if (directiveIndex === -1) break;
+    const line = documentation.substring(0, directiveIndex).split(NEWLINE).length;
+    const restOfDoc = documentation.substring(directiveIndex + DIRECTIVE_MARKER.length);
+    const jsonStartIndex = restOfDoc.indexOf(OPEN_BRACE);
+    if (jsonStartIndex === -1) {
+      searchFrom = directiveIndex + DIRECTIVE_MARKER.length;
+      continue;
+    }
+    const jsonPart = restOfDoc.substring(jsonStartIndex);
+    const completeJson = extractCompleteJson(jsonPart);
+    if (completeJson && typeof completeJson === "string") {
+      const cleanedJson = cleanJsonFromComments(completeJson);
+      results.push({ raw: cleanedJson, line });
+      searchFrom = directiveIndex + DIRECTIVE_MARKER.length + jsonStartIndex + completeJson.length;
+    } else {
+      searchFrom = directiveIndex + DIRECTIVE_MARKER.length;
+    }
+  }
+  return results;
+}
+function parseDirectiveJson(raw, line) {
+  if (!isNonEmptyString(raw)) {
+    return {
+      success: false,
+      error: { message: "Input must be a string", level: "error", line, raw: String(raw) }
+    };
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return {
+        success: false,
+        error: { message: "Parsed value must be an object", level: "error", line, raw }
+      };
+    }
+    const hasValidmethod = parsed.method && typeof parsed.method === "string";
+    if (!hasValidmethod) {
+      return {
+        success: false,
+        error: { message: 'Missing or invalid "method" field', level: "error", line, raw }
+      };
+    }
+    if (isEmpty(parsed.method.trim())) {
+      return {
+        success: false,
+        error: { message: "method cannot be empty", level: "error", line, raw }
+      };
+    }
+    const queryField = parsed.query ?? parsed.args;
+    const hasValidQuery = queryField && typeof queryField === "object";
+    if (!hasValidQuery) {
+      return {
+        success: false,
+        error: {
+          message: 'Missing or invalid "query" or "args" field',
+          level: "error",
+          line,
+          raw
+        }
+      };
+    }
+    return {
+      success: true,
+      data: { method: parsed.method, query: queryField, cache: parsed.cache }
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: {
+        message: `JSON parsing failed: ${err instanceof Error ? err.message : String(err)}`,
+        level: "error",
+        line,
+        raw
+      }
+    };
+  }
+}
+function parseDirectives(documentation) {
+  const extracted = extractDirectives(documentation);
+  const directives = [];
+  const errors = [];
+  for (const { raw, line } of extracted) {
+    const result = parseDirectiveJson(raw, line);
+    if (result.success) {
+      directives.push(result.data);
+    } else {
+      errors.push(result.error);
+    }
+  }
+  return { directives, errors };
+}
+function hasDirectives(documentation) {
+  return isNonEmptyString(documentation) && documentation.includes(DIRECTIVE_MARKER);
+}
+
+// src/utils/validators.ts
+function assertString(value, context) {
+  if (typeof value !== "string") {
+    throw new Error(`Invalid parameter name: non-string.`);
+  }
+}
+function assertArray(value, context) {
+  if (!Array.isArray(value)) {
+    throw new Error(`${context}: must be an array`);
+  }
+}
+
+// src/utils/string.ts
+function trimAndCheck(value) {
+  const trimmed = value.trim();
+  return { trimmed, hasContent: trimmed.length > 0 };
+}
+function hash32(input) {
+  if (typeof input !== "string") {
+    throw new Error("Hash input must be string");
+  }
+  let h = 5381;
+  for (let i = 0; i < input.length; i++) {
+    h = (h << 5) + h ^ input.charCodeAt(i);
+  }
+  return (h >>> 0).toString(36);
+}
+function sanitizeAlphanumeric(str) {
+  return str.replace(/[^a-zA-Z0-9_]/g, "");
+}
+function removeLeadingTrailingUnderscores(str) {
+  return str.replace(/^_+|_+$/g, "");
+}
+function collapseUnderscores(str) {
+  return str.replace(/_+/g, "_");
+}
+function startsWithDigit(str) {
+  return /^\d/.test(str);
+}
+
+// src/utils/array.ts
+function lastElement(arr) {
+  return arr[arr.length - 1];
+}
+function secondLastElement(arr) {
+  return arr[arr.length - 2];
+}
+function deduplicateBy(items, key) {
+  const seen = /* @__PURE__ */ new Set();
+  return items.filter((item) => {
+    const k = key(item);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+// src/extractors.ts
+var DYNAMIC_MARKERS = Object.freeze({
+  PREFIX: "__DYNAMIC_",
+  SUFFIX: "__",
+  PARAM_PREFIX: "$"
+});
+var MIN_ARRAY_MARKER_LENGTH = 3;
+var MIN_DYNAMIC_PARAM_LENGTH = 2;
+var MAX_PARAM_NAME_LENGTH = 64;
+var HASH_SUFFIX_LENGTH = 6;
+var ALL_SQL_KEYWORDS = /* @__PURE__ */ new Set([
+  ...Array.from(SQL_KEYWORDS),
+  ...Array.from(DANGEROUS_SQL_KEYWORDS)
+]);
+var UNSAFE_KEYS = /* @__PURE__ */ new Set([
+  "__proto__",
+  "prototype",
+  "constructor"
+]);
+function isUnsafeKey(key) {
+  return UNSAFE_KEYS.has(key);
+}
+function isArrayMarker(segment) {
+  return isNonEmptyString(segment) && hasMinLength(segment, MIN_ARRAY_MARKER_LENGTH) && segment.startsWith(ARRAY_MARKERS.START) && segment.endsWith(ARRAY_MARKERS.END);
+}
+function isDynamicParameter(value) {
+  if (!isNonEmptyString(value)) return false;
+  const startsWithPrefix = value.startsWith(DYNAMIC_MARKERS.PARAM_PREFIX);
+  if (startsWithPrefix) {
+    return hasMinLength(value, MIN_DYNAMIC_PARAM_LENGTH);
+  }
+  const hasDynamicWrapper = value.startsWith(DYNAMIC_MARKERS.PREFIX) && value.endsWith(DYNAMIC_MARKERS.SUFFIX);
+  if (hasDynamicWrapper) {
+    const innerLength = value.length - DYNAMIC_MARKERS.PREFIX.length - DYNAMIC_MARKERS.SUFFIX.length;
+    return innerLength > 0;
+  }
+  return false;
+}
+function stripUppercaseKeywordEmbeds(token) {
+  let out = token;
+  for (const kw of ALL_SQL_KEYWORDS) {
+    const upper = kw.toUpperCase();
+    if (out.includes(upper)) {
+      out = out.split(upper).join("");
+    }
+  }
+  return out;
+}
+function keywordSafeFallback(originalLower) {
+  const suffix = hash32(originalLower).slice(0, HASH_SUFFIX_LENGTH);
+  return `param_${suffix}`;
+}
+function sanitizeParamName(name) {
+  assertString(name);
+  const { trimmed, hasContent } = trimAndCheck(name);
+  if (!hasContent) {
+    throw new Error("Invalid parameter name: empty.");
+  }
+  const alnum = sanitizeAlphanumeric(trimmed);
+  const originalLower = trimmed.toLowerCase();
+  const alnumLower = alnum.toLowerCase();
+  if (ALL_SQL_KEYWORDS.has(originalLower) || ALL_SQL_KEYWORDS.has(alnumLower)) {
+    return keywordSafeFallback(originalLower);
+  }
+  const tokens = alnum.split("_").map((t) => t.trim()).filter((t) => t.length > 0).map((t) => {
+    const lower = t.toLowerCase();
+    if (ALL_SQL_KEYWORDS.has(lower)) return "";
+    const stripped = stripUppercaseKeywordEmbeds(t);
+    if (stripped.length === 0) return "";
+    if (ALL_SQL_KEYWORDS.has(stripped.toLowerCase())) return "";
+    return stripped;
+  }).filter((t) => t.length > 0);
+  let sanitized = collapseUnderscores(tokens.join("_"));
+  sanitized = removeLeadingTrailingUnderscores(sanitized);
+  if (sanitized.length === 0) {
+    return keywordSafeFallback(originalLower);
+  }
+  if (startsWithDigit(sanitized)) {
+    sanitized = `param_${sanitized}`;
+  }
+  if (sanitized.length > MAX_PARAM_NAME_LENGTH) {
+    sanitized = sanitized.substring(0, MAX_PARAM_NAME_LENGTH);
+  }
+  const finalLower = sanitized.toLowerCase();
+  if (ALL_SQL_KEYWORDS.has(finalLower)) {
+    const suffix = hash32(`${originalLower}:${finalLower}`).slice(0, HASH_SUFFIX_LENGTH);
+    sanitized = `param_${suffix}`;
+    if (sanitized.length > MAX_PARAM_NAME_LENGTH) {
+      sanitized = sanitized.substring(0, MAX_PARAM_NAME_LENGTH);
+    }
+  }
+  return sanitized;
+}
+function extractDynamicName(marker) {
+  if (!isDynamicParameter(marker)) {
+    throw new Error(`Not a dynamic parameter: ${marker}`);
+  }
+  const rawName = marker.startsWith(DYNAMIC_MARKERS.PREFIX) ? marker.slice(DYNAMIC_MARKERS.PREFIX.length, -DYNAMIC_MARKERS.SUFFIX.length) : marker.slice(1);
+  return sanitizeParamName(rawName);
+}
+function toInternalMarker(paramName) {
+  const safe = sanitizeParamName(paramName);
+  return `${DYNAMIC_MARKERS.PREFIX}${safe}${DYNAMIC_MARKERS.SUFFIX}`;
+}
+function inferParameterType(path, model) {
+  if (!Array.isArray(path) || isEmpty(path)) return "string";
+  const lastKey = lastElement(path);
+  if (!isNonEmptyString(lastKey)) return "string";
+  if (NUMERIC_KEYWORDS.has(lastKey)) return "number";
+  if (path.length >= 2 && path[0] === "where") {
+    const fieldName = path[1];
+    if (isNonEmptyString(fieldName)) {
+      const field = model.fields.find((f) => f.name === fieldName);
+      if (field) return prismaTypeToParamType(String(field.type));
+    }
+  }
+  for (const segment of path) {
+    if (!isNonEmptyString(segment)) continue;
+    const lower = segment.toLowerCase();
+    if (lower === "gt" || lower === "gte" || lower === "lt" || lower === "lte") {
+      return "number";
+    }
+  }
+  const lowerKey = lastKey.toLowerCase();
+  if (lowerKey.includes("id") || lowerKey.includes("count") || lowerKey.includes("age")) {
+    return "number";
+  }
+  if (lowerKey.includes("is") || lowerKey.includes("has") || lowerKey.includes("enabled")) {
+    return "boolean";
+  }
+  return "string";
+}
+function prismaTypeToParamType(prismaType) {
+  switch (prismaType) {
+    case "Int":
+    case "Float":
+    case "Decimal":
+    case "BigInt":
+      return "number";
+    case "Boolean":
+      return "boolean";
+    case "Json":
+      return "object";
+    default:
+      return "string";
+  }
+}
+function normalizeParamPath(path) {
+  if (!Array.isArray(path)) return [];
+  return path.filter((segment) => {
+    return isNonEmptyString(segment) && !isArrayMarker(segment) && !FILTER_OPS.has(segment);
+  });
+}
+function pathToDotNotation(path) {
+  if (!Array.isArray(path)) return "";
+  return path.filter((segment) => isNonEmptyString(segment) && !isArrayMarker(segment)).join(".");
+}
+function makeUniqueSanitizedName(base, raw, used) {
+  const rawLower = raw.toLowerCase();
+  let suffix = hash32(rawLower).slice(0, HASH_SUFFIX_LENGTH);
+  let candidate = `${base}_${suffix}`;
+  if (candidate.length > MAX_PARAM_NAME_LENGTH) {
+    const maxBase = Math.max(1, MAX_PARAM_NAME_LENGTH - 1 - suffix.length);
+    candidate = `${base.substring(0, maxBase)}_${suffix}`;
+  }
+  if (startsWithDigit(candidate)) {
+    candidate = `param_${candidate}`;
+  }
+  if (ALL_SQL_KEYWORDS.has(candidate.toLowerCase())) {
+    suffix = hash32(`${rawLower}:${candidate.toLowerCase()}`).slice(0, HASH_SUFFIX_LENGTH);
+    candidate = `param_${suffix}`;
+  }
+  let n = 1;
+  while (used.has(candidate)) {
+    const altSuffix = hash32(`${rawLower}:${n}`).slice(0, HASH_SUFFIX_LENGTH);
+    candidate = `${base}_${altSuffix}`;
+    if (candidate.length > MAX_PARAM_NAME_LENGTH) {
+      const maxBase = Math.max(1, MAX_PARAM_NAME_LENGTH - 1 - altSuffix.length);
+      candidate = `${base.substring(0, maxBase)}_${altSuffix}`;
+    }
+    if (startsWithDigit(candidate)) {
+      candidate = `param_${candidate}`;
+    }
+    if (ALL_SQL_KEYWORDS.has(candidate.toLowerCase())) {
+      candidate = `param_${hash32(`${rawLower}:${candidate.toLowerCase()}`).slice(0, HASH_SUFFIX_LENGTH)}`;
+    }
+    n++;
+    if (n > 1e3) {
+      throw new Error(`Failed to generate unique parameter name after 1000 attempts`);
+    }
+  }
+  return candidate;
+}
+function extractParamsFromQuery(query, model) {
+  const params = [];
+  const dynamicKeys = [];
+  const staticValues = [];
+  const usedNames = /* @__PURE__ */ new Set();
+  const nameToRaw = /* @__PURE__ */ new Map();
+  let position = 1;
+  function assertPlainObject(obj) {
+    if (isNullish(obj)) return;
+    if (!isPlainObject(obj)) {
+      throw new Error("Disallowed non-plain object in query");
+    }
+    const keys = Object.getOwnPropertyNames(obj);
+    for (const key of keys) {
+      if (isUnsafeKey(key)) {
+        throw new Error(`Disallowed key in query object: ${key}`);
+      }
+    }
+  }
+  function traverse(obj, path = []) {
+    if (isDynamicParameter(obj)) {
+      const raw = obj.startsWith(DYNAMIC_MARKERS.PREFIX) ? obj.slice(DYNAMIC_MARKERS.PREFIX.length, -DYNAMIC_MARKERS.SUFFIX.length) : obj.slice(1);
+      let sanitized = sanitizeParamName(raw);
+      if (nameToRaw.has(sanitized)) {
+        const existingRaw = nameToRaw.get(sanitized);
+        if (existingRaw !== raw) {
+          sanitized = makeUniqueSanitizedName(sanitized, raw, usedNames);
+        }
+      }
+      const inferredType = inferParameterType(path, model);
+      if (!usedNames.has(sanitized)) {
+        usedNames.add(sanitized);
+        nameToRaw.set(sanitized, raw);
+        params.push({
+          name: sanitized,
+          originalName: raw,
+          path: [...path],
+          type: inferredType,
+          required: true,
+          position
+        });
+        dynamicKeys.push(sanitized);
+        position++;
+      }
+      return toInternalMarker(sanitized);
+    }
+    if (Array.isArray(obj)) {
+      return obj.map(
+        (item, i) => traverse(item, [...path, `${ARRAY_MARKERS.START}${i}${ARRAY_MARKERS.END}`])
+      );
+    }
+    if (exists(obj) && typeof obj === "object") {
+      assertPlainObject(obj);
+      const result = {};
+      for (const [key, value] of Object.entries(obj)) {
+        result[key] = traverse(value, [...path, key]);
+      }
+      return result;
+    }
+    staticValues.push(obj);
+    return obj;
+  }
+  const processedQuery = traverse(query);
+  const inputSchema = {
+    required: params.filter((p) => p.required === true).map((p) => p.name),
+    optional: params.filter((p) => p.required === false).map((p) => p.name),
+    types: Object.fromEntries(params.map((p) => [p.name, p.type]))
+  };
+  validatePositions(params);
+  return { processedQuery, params, inputSchema, dynamicKeys, staticValues };
+}
+function validatePositions(params) {
+  assertArray(params, "validatePositions params");
+  if (isEmpty(params)) return;
+  for (let i = 0; i < params.length; i++) {
+    const param = params[i];
+    if (isNullish(param)) {
+      throw new Error(`Parameter at index ${i} is null or undefined`);
+    }
+    const expectedPosition = i + 1;
+    if (param.position !== expectedPosition) {
+      throw new Error(
+        `CRITICAL: Parameter position gap detected - param '${param.name}' at index ${i} has position ${param.position}, expected ${expectedPosition}`
+      );
+    }
+  }
+}
+function extractParamValue(params, path) {
+  if (isNullish(params) || typeof params !== "object") return void 0;
+  if (!Array.isArray(path) || isEmpty(path)) return void 0;
+  let value = params;
+  for (const segment of path) {
+    if (!isNonEmptyString(segment)) return void 0;
+    if (segment.trim().length === 0) return void 0;
+    if (isUnsafeKey(segment)) return void 0;
+    if (isArrayMarker(segment)) {
+      const indexStr = segment.slice(1, -1);
+      const index = parseInt(indexStr, 10);
+      if (!Number.isFinite(index) || !Number.isInteger(index) || index < 0) {
+        throw new Error(`Invalid array index: ${segment}`);
+      }
+      if (!Array.isArray(value) || index >= value.length) {
+        return void 0;
+      }
+      value = value[index];
+      continue;
+    }
+    if (isNullish(value) || !isPlainObject(value)) return void 0;
+    if (!Object.prototype.hasOwnProperty.call(value, segment)) return void 0;
+    value = value[segment];
+  }
+  return value;
+}
+function validateDynamicParams(params, dynamicParams) {
+  assertArray(dynamicParams, "validateDynamicParams");
+  if (isEmpty(dynamicParams)) return;
+  const missing = [];
+  for (const param of dynamicParams) {
+    if (isNullish(param) || isNullish(param.path)) continue;
+    if (!Array.isArray(param.path) || isEmpty(param.path)) continue;
+    const value = extractParamValue(params, param.path);
+    if (isNullish(value)) {
+      const dotPath = pathToDotNotation(param.path);
+      const { hasContent } = trimAndCheck(dotPath);
+      if (hasContent) {
+        missing.push(`${param.name} (path: ${dotPath})`);
+      } else {
+        missing.push(param.name);
+      }
+    }
+  }
+  if (missing.length > 0) {
+    throw new Error(`Missing required parameters: ${missing.join(", ")}`);
+  }
+}
+function organizeParameters(params) {
+  assertArray(params, "organizeParameters");
+  const all = [...params].sort((a, b) => a.position - b.position);
+  const required = all.filter((p) => p.required === true);
+  const optional = all.filter((p) => p.required === false);
+  const typeMap = {};
+  for (const param of all) {
+    typeMap[param.name] = param.type;
+  }
+  return { all, required, optional, typeMap };
+}
+function deduplicateParams(params) {
+  if (!Array.isArray(params)) return [];
+  return deduplicateBy(params, (p) => p.name);
+}
+
+// src/transformer.ts
+var ARRAY_INDEX_PATTERN = /^\[\d+\]$/;
+function isArrayIndexSegment(seg) {
+  return isNonEmptyString(seg) && ARRAY_INDEX_PATTERN.test(seg);
+}
+function transformQuery(query, model) {
+  const errors = [];
+  const fieldNames = new Set(model.fields.map((f) => f.name));
+  const logicalOps = /* @__PURE__ */ new Set(["AND", "OR", "NOT"]);
+  const unsafeKeys = /* @__PURE__ */ new Set(["__proto__", "prototype", "constructor"]);
+  function isWhereInputObject(path) {
+    if (!Array.isArray(path) || path.length === 0) return false;
+    if (path.length === 1 && path[0] === "where") {
+      return true;
+    }
+    if (path.length >= 2 && path[0] === "where") {
+      const last = lastElement(path);
+      if (isNonEmptyString(last) && logicalOps.has(last)) {
+        return true;
+      }
+    }
+    if (path.length >= 3 && path[0] === "where") {
+      const last = lastElement(path);
+      const secondLast = secondLastElement(path);
+      if (isNonEmptyString(last) && isNonEmptyString(secondLast)) {
+        if (isArrayIndexSegment(last) && logicalOps.has(secondLast)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  function validateFields(obj, path = []) {
+    if (isDynamicParameter(obj)) return;
+    if (Array.isArray(obj)) {
+      obj.forEach((item, i) => validateFields(item, [...path, `[${i}]`]));
+      return;
+    }
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      for (const [key, value] of Object.entries(obj)) {
+        if (typeof key !== "string") continue;
+        if (unsafeKeys.has(key)) {
+          errors.push(`Disallowed key '${key}' in query object`);
+          continue;
+        }
+        if (isWhereInputObject(path)) {
+          if (!logicalOps.has(key) && !fieldNames.has(key)) {
+            errors.push(`Field '${key}' does not exist on model '${model.name}'`);
+          }
+        }
+        validateFields(value, [...path, key]);
+      }
+    }
+  }
+  validateFields(query);
+  try {
+    const extracted = extractParamsFromQuery(query, model);
+    return {
+      processed: extracted.processedQuery,
+      parameters: extracted.params,
+      staticValues: extracted.staticValues,
+      dynamicKeys: extracted.dynamicKeys,
+      errors
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      processed: query,
+      parameters: [],
+      staticValues: [],
+      dynamicKeys: [],
+      errors: [...errors, msg]
+    };
+  }
+}
+function processQuery(query, model) {
+  const { processed, parameters, staticValues, dynamicKeys, errors } = transformQuery(query, model);
+  return {
+    result: { original: query, processed, staticValues, dynamicKeys },
+    errors,
+    parameters
+  };
+}
+
+// src/directives.ts
+var DEFAULT_CONFIG = {
+  defaultCacheTtl: CACHE_TTL.DEFAULT,
+  skipInvalid: true
+};
+function validateTTL(ttl, context) {
+  if (typeof ttl !== "number") {
+    throw new Error(`Invalid TTL in ${context}: ${ttl}. Must be a number.`);
+  }
+  if (!Number.isFinite(ttl)) {
+    throw new Error(`Invalid TTL in ${context}: ${ttl}. Must be finite.`);
+  }
+  if (!Number.isInteger(ttl)) {
+    throw new Error(`Invalid TTL in ${context}: ${ttl}. Must be integer between ${CACHE_TTL.MIN} and ${CACHE_TTL.MAX}.`);
+  }
+  if (!inRange(ttl, CACHE_TTL.MIN, CACHE_TTL.MAX)) {
+    throw new Error(`Invalid TTL in ${context}: ${ttl}. Must be integer between ${CACHE_TTL.MIN} and ${CACHE_TTL.MAX}.`);
+  }
+  return ttl;
+}
+function isValidTTL(ttl) {
+  return typeof ttl === "number" && Number.isFinite(ttl) && Number.isInteger(ttl) && inRange(ttl, CACHE_TTL.MIN, CACHE_TTL.MAX);
+}
+function parseCacheConfig(directive, defaultTtl) {
+  const validatedDefault = validateTTL(defaultTtl, "defaultCacheTtl config");
+  if (directive === false) {
+    return { enabled: false };
+  }
+  if (directive === void 0 || directive === true) {
+    return { enabled: true, ttl: validatedDefault };
+  }
+  if (isPlainObject(directive)) {
+    const ttl = directive.ttl;
+    const binding = directive.binding;
+    if (isValidTTL(ttl)) {
+      return { enabled: true, ttl, binding };
+    }
+    return { enabled: true, ttl: validatedDefault, binding };
+  }
+  return { enabled: true, ttl: validatedDefault };
+}
+function processDirective(raw, model, datamodel, config) {
+  const queryResult = processQuery(raw.query, model);
+  if (queryResult.errors.length > 0) {
+    return { errors: queryResult.errors };
+  }
+  const cache = parseCacheConfig(raw.cache, config.defaultCacheTtl);
+  const directive = {
+    method: raw.method,
+    modelName: model.name,
+    query: queryResult.result,
+    parameters: organizeParameters(queryResult.parameters),
+    cache,
+    context: {
+      model,
+      datamodel,
+      allModels: datamodel.models,
+      enums: datamodel.enums
+    }
+  };
+  return { directive, errors: [] };
+}
+function processModelDirectives(model, datamodel, config = {}) {
+  const fullConfig = { ...DEFAULT_CONFIG, ...config };
+  const { directives: rawDirectives, errors: parseErrors } = parseDirectives(model.documentation);
+  const processedDirectives = [];
+  const allErrors = [...parseErrors];
+  for (const raw of rawDirectives) {
+    try {
+      const result = processDirective(raw, model, datamodel, fullConfig);
+      if (result.errors.length > 0) {
+        for (const message of result.errors) {
+          allErrors.push({ message, level: "error", raw: JSON.stringify(raw) });
+        }
+        if (fullConfig.skipInvalid === false) {
+          throw new Error(result.errors.join("; "));
+        }
+        continue;
+      }
+      if (result.directive) {
+        processedDirectives.push(result.directive);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      allErrors.push({
+        message: `Failed to process directive: ${errorMessage}`,
+        level: "error",
+        raw: JSON.stringify(raw)
+      });
+      if (fullConfig.skipInvalid === false) {
+        throw error;
+      }
+    }
+  }
+  const hasCaching = processedDirectives.some((d) => d.cache.enabled === true);
+  return {
+    modelName: model.name,
+    directives: processedDirectives,
+    errors: allErrors,
+    hasCaching
+  };
+}
+function processAllDirectives(models, datamodel, config = {}) {
+  const results = /* @__PURE__ */ new Map();
+  for (const model of models) {
+    const result = processModelDirectives(model, datamodel, config);
+    if (result.directives.length > 0 || result.errors.length > 0) {
+      results.set(model.name, result);
+    }
+  }
+  return results;
+}
+function getDirectiveProps(model, datamodel, defaultTtl = CACHE_TTL.DEFAULT) {
+  const result = processModelDirectives(model, datamodel, { defaultCacheTtl: defaultTtl });
+  return result.directives;
+}
+
+// src/model-converter.ts
+function encodeType(baseType, isList) {
+  return isList ? `${baseType}[]` : baseType;
+}
+function toMutableKeys(fields) {
+  if (!fields || fields.length === 0) return void 0;
+  if (fields.length === 1) return fields[0];
+  return [...fields];
+}
+function convertDMMFToModels(datamodel) {
+  return datamodel.models.map((dmmfModel) => {
+    const fields = [];
+    for (const field of dmmfModel.fields) {
+      if (field.kind === "scalar" || field.kind === "enum") {
+        fields.push({
+          name: field.name,
+          dbName: field.dbName ?? field.name,
+          type: encodeType(String(field.type), Boolean(field.isList)),
+          isId: Boolean(field.isId),
+          isRequired: field.isRequired,
+          isRelation: false,
+          relatedModel: void 0,
+          foreignKey: void 0,
+          references: void 0,
+          relationName: void 0,
+          isForeignKeyLocal: void 0
+        });
+        continue;
+      }
+      if (field.kind === "object") {
+        const fromFields = field.relationFromFields ?? [];
+        const toFields = field.relationToFields ?? [];
+        const isFkLocal = fromFields.length > 0;
+        let foreignKey;
+        let references;
+        if (isFkLocal) {
+          foreignKey = toMutableKeys(fromFields);
+          references = toMutableKeys(toFields);
+        } else if (field.relationName) {
+          const relatedModel = datamodel.models.find(
+            (m) => m.name === String(field.type)
+          );
+          if (relatedModel) {
+            const inverseField = relatedModel.fields.find(
+              (f) => f.kind === "object" && f.relationName === field.relationName && f.relationFromFields && f.relationFromFields.length > 0
+            );
+            if (inverseField) {
+              foreignKey = toMutableKeys(inverseField.relationFromFields);
+              references = toMutableKeys(inverseField.relationToFields);
+            }
+          }
+        }
+        fields.push({
+          name: field.name,
+          dbName: field.name,
+          type: encodeType(String(field.type), Boolean(field.isList)),
+          isRequired: field.isRequired,
+          isRelation: true,
+          relatedModel: String(field.type),
+          foreignKey,
+          references,
+          relationName: field.relationName,
+          isForeignKeyLocal: isFkLocal
+        });
+      }
+    }
+    const compositePk = dmmfModel.primaryKey?.fields;
+    const primaryKey = Array.isArray(compositePk) && compositePk.length > 0 ? { fields: compositePk.map(String) } : void 0;
+    return {
+      name: dmmfModel.name,
+      tableName: dmmfModel.dbName || dmmfModel.name,
+      fields,
+      primaryKey
+    };
+  });
+}
+
+exports.ARRAY_MARKERS = ARRAY_MARKERS;
+exports.CACHE_TTL = CACHE_TTL;
+exports.DANGEROUS_SQL_KEYWORDS = DANGEROUS_SQL_KEYWORDS;
+exports.DYNAMIC_MARKERS = DYNAMIC_MARKERS;
+exports.FILTER_OPS = FILTER_OPS;
+exports.MAX_TTL = MAX_TTL;
+exports.MIN_TTL = MIN_TTL;
+exports.NUMERIC_KEYWORDS = NUMERIC_KEYWORDS;
+exports.SQL_KEYWORDS = SQL_KEYWORDS;
+exports.convertDMMFToModels = convertDMMFToModels;
+exports.deduplicateParams = deduplicateParams;
+exports.extractCompleteJson = extractCompleteJson;
+exports.extractDirectives = extractDirectives;
+exports.extractDynamicName = extractDynamicName;
+exports.extractParamValue = extractParamValue;
+exports.extractParamsFromQuery = extractParamsFromQuery;
+exports.getDirectiveProps = getDirectiveProps;
+exports.hasDirectives = hasDirectives;
+exports.inferParameterType = inferParameterType;
+exports.isArrayMarker = isArrayMarker;
+exports.isDynamicParameter = isDynamicParameter;
+exports.normalizeParamPath = normalizeParamPath;
+exports.organizeParameters = organizeParameters;
+exports.parseCacheConfig = parseCacheConfig;
+exports.parseDirectiveJson = parseDirectiveJson;
+exports.parseDirectives = parseDirectives;
+exports.pathToDotNotation = pathToDotNotation;
+exports.processAllDirectives = processAllDirectives;
+exports.processModelDirectives = processModelDirectives;
+exports.processQuery = processQuery;
+exports.sanitizeParamName = sanitizeParamName;
+exports.toInternalMarker = toInternalMarker;
+exports.transformQuery = transformQuery;
+exports.validateDynamicParams = validateDynamicParams;
+exports.validateParamMap = validateParamMap;
+exports.validatePositions = validatePositions;
+//# sourceMappingURL=index.cjs.map
+//# sourceMappingURL=index.cjs.map

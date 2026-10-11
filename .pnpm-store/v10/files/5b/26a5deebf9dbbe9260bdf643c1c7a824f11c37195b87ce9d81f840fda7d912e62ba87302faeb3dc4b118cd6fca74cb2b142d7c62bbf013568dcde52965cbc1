@@ -1,0 +1,24 @@
+import { safeParse, strictObject } from "valibot";
+import { logger } from "../logger.js";
+import { gcmConsentState } from "./schemas.js";
+const gcmConsentStateStrict = strictObject(gcmConsentState.entries);
+export function validateConsentState(log, state, source) {
+  const result = safeParse(gcmConsentStateStrict, state);
+  if (result.success)
+    return;
+  for (const issue of result.issues)
+    log.warn(`${source}: ${issue.message} (path: ${issue.path?.map((p) => p.key).join(".") || "<root>"})`);
+}
+export function attachGcmConsent(instance, contract, registryKey) {
+  if (instance.consent)
+    return;
+  const log = logger.withTag(registryKey);
+  const push = (action, state) => {
+    validateConsentState(log, state, `consent.${action}()`);
+    contract.push(instance.proxy, action, state);
+  };
+  instance.consent = {
+    default: (state) => push("default", state),
+    update: (state) => push("update", state)
+  };
+}

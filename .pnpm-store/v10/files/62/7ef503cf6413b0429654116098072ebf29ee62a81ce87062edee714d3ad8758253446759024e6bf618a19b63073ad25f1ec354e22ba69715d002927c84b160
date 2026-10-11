@@ -1,0 +1,124 @@
+import { useHead, useNuxtApp, useRouter } from "nuxt/app";
+import { speedcurveLuxSnippet } from "#build/nuxt-scripts-snippets";
+import { useRegistryScript } from "../utils.js";
+import { afterNextPaint } from "../utils/after-next-paint.js";
+import { SpeedCurveOptions } from "./schemas.js";
+export { SpeedCurveOptions };
+const LUX_USER_CONFIG_KEYS = Object.keys(SpeedCurveOptions.entries).filter(
+  (k) => k !== "id" && k !== "autoTrackSpaNavigations" && k !== "spaMode"
+);
+let luxWired = false;
+let teardownAutoTracker = () => {
+};
+export function useScriptSpeedCurve(_options) {
+  return useRegistryScript("speedcurve", (options) => ({
+    scriptInput: {
+      src: `https://cdn.speedcurve.com/js/lux.js?id=${options.id}`,
+      crossorigin: "anonymous"
+    },
+    schema: import.meta.dev ? SpeedCurveOptions : void 0,
+    scriptOptions: {
+      trigger: "client",
+      use: () => ({ LUX: window.LUX }),
+      beforeInit: () => {
+        if (!speedcurveLuxSnippet)
+          return;
+        useHead({
+          script: [{
+            key: "speedcurve-lux-primer",
+            tagPosition: "head",
+            tagPriority: "critical",
+            innerHTML: speedcurveLuxSnippet
+          }]
+        });
+      }
+    },
+    clientInit: import.meta.server ? void 0 : () => {
+      const input = options;
+      applyConfig(input);
+      if (options.spaMode && options.autoTrackSpaNavigations !== false)
+        installAutoTracker(input);
+    }
+  }), _options);
+}
+export function applyConfig(options) {
+  const lux = window.LUX;
+  if (!lux)
+    return;
+  for (const k of LUX_USER_CONFIG_KEYS) {
+    const v = options[k];
+    if (v === void 0)
+      continue;
+    if (k === "label" && typeof v !== "string")
+      continue;
+    lux[k] = v;
+  }
+}
+export function installAutoTracker(options) {
+  if (luxWired)
+    return;
+  luxWired = true;
+  const router = useRouter();
+  const nuxt = useNuxtApp();
+  let pendingInitial = nuxt.payload?.serverRendered === false;
+  const label = options?.label === false ? null : typeof options?.label === "function" ? options.label : (to) => String(to.name ?? to.path);
+  const stopBeforeEach = router.beforeEach((to) => {
+    const lux = window.LUX;
+    if (!lux)
+      return;
+    if (pendingInitial) {
+      pendingInitial = false;
+      if (label) {
+        const nextLabel = label(to);
+        if (nextLabel !== false)
+          lux.label = nextLabel;
+      }
+      return;
+    }
+    lux.startSoftNavigation();
+    if (label) {
+      const nextLabel = label(to);
+      if (nextLabel !== false)
+        lux.label = nextLabel;
+    }
+  });
+  const stopAfterEach = router.afterEach((_to, _from, failure) => {
+    if (!failure)
+      return;
+    const lux = window.LUX;
+    if (!lux)
+      return;
+    lux.markLoadTime();
+    lux.addData("luxNavFailed", "1");
+  });
+  const pendingPaints = /* @__PURE__ */ new Set();
+  const stopPageFinish = nuxt.hook("page:finish", () => {
+    const pending = { cancel: () => {
+    } };
+    pendingPaints.add(pending);
+    pending.cancel = afterNextPaint(() => {
+      pendingPaints.delete(pending);
+      window.LUX?.markLoadTime();
+    });
+  });
+  let stopAppUnmount = () => {
+  };
+  const cleanup = () => {
+    if (!luxWired)
+      return;
+    luxWired = false;
+    stopBeforeEach();
+    stopAfterEach();
+    stopPageFinish();
+    stopAppUnmount();
+    for (const pending of pendingPaints)
+      pending.cancel();
+    pendingPaints.clear();
+    teardownAutoTracker = () => {
+    };
+  };
+  stopAppUnmount = nuxt.hook("app:unmount", cleanup);
+  teardownAutoTracker = cleanup;
+}
+if (import.meta.hot)
+  import.meta.hot.dispose(() => teardownAutoTracker());

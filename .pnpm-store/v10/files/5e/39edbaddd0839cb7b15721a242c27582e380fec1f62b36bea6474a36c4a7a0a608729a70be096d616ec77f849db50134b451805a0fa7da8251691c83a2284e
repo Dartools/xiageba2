@@ -1,0 +1,23 @@
+import type { RegistryScriptInput } from '#nuxt-scripts/types';
+import { GoogleAdsenseOptions } from './schemas.js';
+export { GoogleAdsenseOptions };
+export type GoogleAdsenseInput = RegistryScriptInput<typeof GoogleAdsenseOptions, true, false>;
+export interface GoogleAdsenseApi {
+    /**
+     * The Google Adsense API.
+     */
+    adsbygoogle: any[] & {
+        loaded?: boolean;
+    };
+}
+declare global {
+    interface Window {
+        adsbygoogle: GoogleAdsenseApi['adsbygoogle'];
+    }
+}
+/**
+ * useScriptGoogleAdsense
+ *
+ * A 3P wrapper for Google Analytics that takes an options input to feed into third-party-capital({@link https://github.com/GoogleChromeLabs/third-party-capital}), which returns instructions for nuxt-scripts.
+ */
+export declare function useScriptGoogleAdsense<T extends GoogleAdsenseApi>(_options?: GoogleAdsenseInput): import("#nuxt-scripts/types").UseScriptContext<T>;

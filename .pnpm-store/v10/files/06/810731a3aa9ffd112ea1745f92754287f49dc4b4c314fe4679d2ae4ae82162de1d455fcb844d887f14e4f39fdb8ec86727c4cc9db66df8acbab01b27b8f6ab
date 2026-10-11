@@ -1,0 +1,18 @@
+import { useRegistryScript } from "../utils.js";
+import { AhrefsAnalyticsOptions } from "./schemas.js";
+export { AhrefsAnalyticsOptions };
+export function useScriptAhrefsAnalytics(_options) {
+  return useRegistryScript("ahrefsAnalytics", (options) => ({
+    scriptInput: {
+      "src": "https://analytics.ahrefs.com/analytics.js",
+      "data-key": options.key,
+      "crossorigin": false
+    },
+    schema: import.meta.dev ? AhrefsAnalyticsOptions : void 0,
+    scriptOptions: {
+      use() {
+        return { AhrefsAnalytics: window.AhrefsAnalytics };
+      }
+    }
+  }), _options);
+}

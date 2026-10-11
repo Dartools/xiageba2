@@ -1,0 +1,8 @@
+import type { RegistryScriptInput } from '#nuxt-scripts/types';
+import { InstagramEmbedOptions } from './schemas.js';
+export { InstagramEmbedOptions };
+export type InstagramEmbedInput = RegistryScriptInput<typeof InstagramEmbedOptions, false, false>;
+/**
+ * Extract the post shortcode from an Instagram URL
+ */
+export declare function extractInstagramShortcode(url: string): string | undefined;

@@ -1,0 +1,46 @@
+function walk(root, path) {
+  let owner;
+  let value = root;
+  for (const key of path) {
+    if (value == null)
+      return { owner: void 0, value: void 0 };
+    owner = value;
+    value = Reflect.get(value, key, value);
+  }
+  return { owner, value };
+}
+export function createNpmScriptProxy(fallback, getApi) {
+  function node(path, fallbackValue) {
+    const children = /* @__PURE__ */ new Map();
+    return new Proxy(() => {
+    }, {
+      get(_, property) {
+        const api = getApi();
+        let value;
+        if (api) {
+          const current = walk(api, path).value;
+          value = current == null ? void 0 : Reflect.get(current, property, current);
+        } else {
+          value = Reflect.get(fallbackValue, property, fallbackValue);
+        }
+        if (typeof value !== "function")
+          return value;
+        let child = children.get(property);
+        if (!child) {
+          child = node([...path, property], value);
+          children.set(property, child);
+        }
+        return child;
+      },
+      apply(_, thisArg, args) {
+        const api = getApi();
+        if (api) {
+          const { owner, value } = walk(api, path);
+          return Reflect.apply(value, owner, args);
+        }
+        return Reflect.apply(fallbackValue, thisArg, args);
+      }
+    });
+  }
+  return node([], fallback);
+}

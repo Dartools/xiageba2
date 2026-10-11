@@ -1,0 +1,467 @@
+import { Model as Model$1, ParamMap, DirectiveProps } from '@dee-wan/schema-parser';
+import { DMMF } from '@prisma/generator-helper';
+
+type SqlDialect = 'postgres' | 'sqlite';
+
+interface LateralRelationMeta {
+    name: string;
+    isList: boolean;
+    fieldTypes: Array<{
+        fieldName: string;
+        type: string;
+    }>;
+    nestedRelations: LateralRelationMeta[];
+}
+
+type Model = Model$1;
+interface ParamMapping {
+    index: number;
+    dynamicName?: string;
+    value?: unknown;
+}
+interface SqlResult {
+    sql: string;
+    params: unknown[];
+    paramMappings?: ParamMapping[];
+    requiresReduction?: boolean;
+    includeSpec?: Record<string, any>;
+    isLateral?: boolean;
+    lateralMeta?: LateralRelationMeta[];
+    skipWhereIn?: boolean;
+    orRewriteApplied?: 'union-of-ids';
+}
+type PrismaMethod = 'findUnique' | 'findFirst' | 'findMany' | 'create' | 'createMany' | 'update' | 'updateMany' | 'upsert' | 'delete' | 'deleteMany' | 'count' | 'aggregate' | 'groupBy';
+interface PrismaSQLConfig<TClient> {
+    client: TClient;
+    models?: Model[];
+    dmmf?: any;
+    dialect: 'postgres' | 'sqlite';
+    execute: (client: TClient, sql: string, params: unknown[]) => Promise<unknown[]>;
+}
+interface PrismaSQLResult<TClient> {
+    toSQL: (model: string, method: PrismaMethod, args?: Record<string, unknown>) => SqlResult;
+    query: <T = unknown[]>(model: string, method: PrismaMethod, args?: Record<string, unknown>) => Promise<T>;
+    batchSql: (queries: Record<string, any>) => SqlResult;
+    client: TClient;
+}
+
+interface SQLDirective {
+    method: PrismaMethod;
+    sql: string;
+    staticParams: any[];
+    dynamicKeys: string[];
+    paramOrder: string;
+    paramMappings: readonly ParamMap[];
+    requiresReduction: boolean;
+    includeSpec: Record<string, any>;
+    isLateral: boolean;
+    lateralMeta?: LateralRelationMeta[];
+    skipWhereIn?: boolean;
+    orRewriteApplied?: 'union-of-ids';
+    originalDirective: DirectiveProps;
+}
+
+type OrRewriteMode = 'default' | 'union-of-ids';
+interface SqlBuildOptions {
+    orRewrite?: OrRewriteMode;
+}
+
+declare function rebuildQueryCache(): void;
+
+interface TransactionQuery {
+    model: string;
+    method: PrismaMethod;
+    args?: Record<string, unknown>;
+}
+interface TransactionOptions {
+    isolationLevel?: 'ReadCommitted' | 'RepeatableRead' | 'Serializable';
+    timeout?: number;
+}
+interface TransactionExecutor {
+    execute(queries: TransactionQuery[], options?: TransactionOptions): Promise<unknown[]>;
+}
+declare function createTransactionExecutor(deps: {
+    modelMap: Map<string, Model>;
+    allModels: Model[];
+    dialect: SqlDialect;
+    executeRaw: (sql: string, params?: unknown[]) => Promise<unknown[]>;
+    postgresClient?: any;
+}): TransactionExecutor;
+
+declare function transformQueryResults(method: string, results: unknown, model?: Model): unknown;
+
+interface PrerenderedWhereIn {
+    sql: string;
+    paramMappings: readonly {
+        index: number;
+        value?: unknown;
+        dynamicName?: string;
+    }[];
+    dynamicInName: string;
+    needsStripFk: boolean;
+    requiresReduction: boolean;
+    includeSpec: Record<string, any> | null;
+    reducerConfig: any | null;
+    nestedSegments: WhereInSegment[];
+    injectedParentKeys: string[];
+}
+interface WhereInSegment {
+    relationName: string;
+    relArgs: unknown;
+    childModelName: string;
+    fkFieldNames: string[];
+    parentKeyFieldNames: string[];
+    isList: boolean;
+    perParentTake?: number;
+    perParentSkip?: number;
+    prerendered?: PrerenderedWhereIn;
+}
+interface QueryPlan {
+    filteredArgs: any;
+    originalArgs: any;
+    whereInSegments: WhereInSegment[];
+    injectedParentKeys: string[];
+}
+declare function planQueryStrategy(params: {
+    model: Model;
+    method: string;
+    args: any;
+    allModels: readonly Model[];
+    dialect: 'postgres' | 'sqlite';
+    debug?: boolean;
+}): QueryPlan;
+
+type ExecuteFn = (sql: string, params: unknown[]) => Promise<any[]>;
+
+interface ExecuteWhereInParams {
+    segments: WhereInSegment[];
+    parentRows: any[];
+    parentModel: Model;
+    allModels: readonly Model[];
+    modelMap: Map<string, Model>;
+    dialect: 'postgres' | 'sqlite';
+    execute: ExecuteFn;
+}
+declare function executeWhereInSegments(params: ExecuteWhereInParams): Promise<void>;
+
+interface StreamingWhereInParams {
+    segments: WhereInSegment[];
+    parentSql: string;
+    parentParams: unknown[];
+    parentModel: Model;
+    allModels: readonly Model[];
+    modelMap: Map<string, Model>;
+    dialect: 'postgres' | 'sqlite';
+    execute: ExecuteFn;
+    stream?: (sql: string, params: unknown[], onRow: (row: any) => void) => Promise<void>;
+    parentTake?: number;
+}
+interface PreFetchedWhereInParams {
+    segments: WhereInSegment[];
+    parentRows: any[];
+    parentModel: Model;
+    allModels: readonly Model[];
+    modelMap: Map<string, Model>;
+    dialect: 'postgres' | 'sqlite';
+    execute: ExecuteFn;
+}
+declare function executeWhereInSegmentsStreaming(params: StreamingWhereInParams): Promise<any[]>;
+declare function executeWithPreFetchedParents(params: PreFetchedWhereInParams): Promise<any[]>;
+
+declare function getPrimaryKeyField(model: Model): string;
+
+interface LateralReducerConfig {
+    parentScalarFields: string[];
+    parentJsonSet: ReadonlySet<string>;
+    relations: LateralRelationMeta[];
+}
+declare function buildLateralReducerConfig(parentModel: Model, lateralMeta: LateralRelationMeta[]): LateralReducerConfig;
+declare function reduceLateralRows(rows: any[], config: LateralReducerConfig): any[];
+
+interface BatchQuery {
+    model: string;
+    method: PrismaMethod;
+    args?: Record<string, unknown>;
+}
+interface BatchCountQuery {
+    model: string;
+    method: 'count';
+    args?: {
+        where?: Record<string, unknown>;
+    };
+}
+interface BatchResult {
+    sql: string;
+    params: unknown[];
+}
+declare function buildBatchSql(queries: Record<string, BatchQuery>, modelMap: Map<string, Model>, models: Model[], dialect: SqlDialect): BatchResult & {
+    keys: string[];
+    aliases: string[];
+};
+declare function buildBatchCountSql(queries: BatchCountQuery[], modelMap: Map<string, Model>, models: Model[], dialect: SqlDialect): BatchResult;
+
+declare function parseBatchCountResults(row: Record<string, unknown>, queryCount: number): number[];
+declare function parseBatchResults(row: Record<string, unknown>, keys: string[], queries: Record<string, BatchQuery>, aliases?: string[], modelMap?: Map<string, Model>): Record<string, unknown>;
+
+interface ReducerConfig {
+    parentModel: Model;
+    includedRelations: RelationMetadata[];
+    allModels: readonly Model[];
+}
+interface ScalarColSpec {
+    fieldName: string;
+    colName: string;
+    isJson: boolean;
+}
+interface RelationMetadata {
+    name: string;
+    cardinality: 'one' | 'many';
+    relatedModel: Model;
+    primaryKeyFields: string[];
+    includeAllScalars: boolean;
+    selectedScalarFields: string[];
+    nestedIncludes?: ReducerConfig | null;
+    childLimit?: number;
+    path: string;
+    keyCols: string[];
+    scalarCols: ScalarColSpec[];
+}
+declare function buildReducerConfig(parentModel: Model, includeSpec: Record<string, any>, allModels: readonly Model[], prefix?: string, depth?: number): ReducerConfig;
+declare function reduceFlatRows(rows: any[], config: ReducerConfig): any[];
+
+type DateMode = 'iso' | 'ms';
+declare function setNormalizeDateMode(mode: DateMode): void;
+declare function detectSqliteDateMode(client: any): DateMode;
+declare function normalizeValue(value: unknown, seen?: WeakSet<object>, depth?: number): unknown;
+
+declare function createStreamingReducer(config: ReducerConfig): {
+    processRow(row: any): void;
+    getResults(): any[];
+    getParentMap(): Map<unknown, any>;
+};
+
+interface ProgressiveReducer {
+    processRow(row: any): void;
+    getCurrentParentKey(row: any): string | null;
+    getCompletedParent(parentKey: string): any | null;
+    getRemainingParents(): any[];
+}
+declare function createProgressiveReducer(config: ReducerConfig): ProgressiveReducer;
+
+declare function transformAggregateRow(row: any, model?: Model): any;
+declare function extractCountValue(row: any): number | bigint;
+declare function getRowTransformer(method: string, model?: Model): ((row: any) => any) | null;
+
+declare function getOrPrepareStatement(client: any, sql: string): any;
+declare function shouldSqliteUseGet(method: string): boolean;
+declare function normalizeParams(params: unknown[]): unknown[];
+interface PostgresQueryOptions {
+    client: any;
+    sql: string;
+    params: unknown[];
+    method: string;
+    requiresReduction: boolean;
+    includeSpec?: Record<string, any>;
+    model: Model;
+    allModels: readonly Model[];
+    isLateral?: boolean;
+    lateralMeta?: LateralRelationMeta[];
+}
+declare function executePostgresQuery(opts: PostgresQueryOptions): Promise<unknown[]>;
+interface StreamReduceConfig<TAcc, TOut> {
+    init: () => TAcc;
+    onRow: (row: any, acc: TAcc) => void;
+    finalize: (acc: TAcc) => TOut;
+}
+interface StreamReduceOptions<TAcc, TOut> {
+    client: any;
+    sql: string;
+    params: unknown[];
+    model: Model;
+    allModels: readonly Model[];
+    requiresReduction: boolean;
+    includeSpec?: Record<string, any>;
+    isLateral?: boolean;
+    lateralMeta?: LateralRelationMeta[];
+    reduce: StreamReduceConfig<TAcc, TOut>;
+}
+/**
+ * Single-pass score-and-accumulate over the postgres socket cursor.
+ *
+ * Fully hydrated entities are handed to `reduce.onRow` as they complete: at the
+ * parent-key transition for progressive reduction, after lateral reduction, or
+ * directly per row when no reduction is required. The caller owns the
+ * accumulator (e.g. a bounded top-K heap) and produces the ordered result in
+ * `finalize` when the stream ends — no buffered full-pool array, no second sort
+ * pass for the non-lateral paths.
+ *
+ * The lateral path must materialize all rows before reduction, so its memory is
+ * not bounded by the accumulator; the progressive and plain paths hold only the
+ * accumulator plus one in-flight parent group.
+ */
+declare function streamReduce<TAcc, TOut>(opts: StreamReduceOptions<TAcc, TOut>): Promise<TOut>;
+declare function executeSqliteQuery(client: any, sql: string, params: unknown[], method: string, model?: Model): unknown[];
+declare function executeRaw(client: any, sql: string, params: unknown[] | undefined, dialect: string): Promise<unknown[]>;
+
+type RelStats = {
+    avg: number;
+    p95: number;
+    p99: number;
+    max: number;
+    coverage: number;
+};
+type RelationStatsMap = Record<string, Record<string, RelStats>>;
+type ModelStats = {
+    rowCount: number;
+    tableName: string;
+    schemaName?: string;
+    known?: boolean;
+    /**
+     * Physical size in bytes; always current (pg_relation_size, or the summed
+     * size of all leaf partitions for partitioned tables).
+     */
+    relBytes?: number;
+    /** 'partitioned' for declarative partitioned tables (relkind 'p'). */
+    relationKind?: 'table' | 'partitioned';
+};
+type ModelStatsMap = Record<string, ModelStats>;
+interface StrategyConfig {
+    /** Cost (in row-equivalents) of one additional database roundtrip. Default: 73 */
+    roundtripRowEquivalent: number;
+    /** Multiplier for JSON aggregation overhead per row. Default: 1.5 */
+    jsonRowFactor: number;
+    /** Correlated subquery cost factor when child has LIMIT. Default: 0.5 */
+    correlatedBoundedFactor: number;
+    /** Correlated subquery cost factor when child is unbounded. Default: 3.0 */
+    correlatedUnboundedFactor: number;
+    /** Extra cost multiplier when child relation has a WHERE clause. Default: 3.0 */
+    correlatedWherePenalty: number;
+    /** Assumed fan-out when no relation stats are available. Default: 10 */
+    defaultFanOut: number;
+    /** Assumed parent row count when take is not specified. Default: 50 */
+    defaultParentCount: number;
+    /** Max include depth that allows flat-join for single-parent queries. Default: 2 */
+    singleParentMaxFlatJoinDepth: number;
+    /** Minimum stats coverage to trust relation cardinality data. Default: 0.1 */
+    minStatsCoverage: number;
+    /** Assumed take value for dynamic (runtime) parameters. Default: 10 */
+    dynamicTakeEstimate: number;
+    /** Child table row count threshold above which the pathological-query guard activates. Default: 100000 */
+    largeChildTableRows: number;
+    /** Parent count threshold below which the pathological-query guard activates. Default: 1000 */
+    smallParentCountThreshold: number;
+}
+/**
+ * Override one or more strategy cost-model parameters.
+ * Only provided keys are updated; others keep their current values.
+ */
+declare function setStrategyConfig(overrides: Partial<StrategyConfig>): void;
+/**
+ * Returns a frozen snapshot of the current strategy config.
+ */
+declare function getStrategyConfig(): Readonly<StrategyConfig>;
+declare function setRoundtripRowEquivalent(value: number): void;
+declare function setJsonRowFactor(value: number): void;
+declare function setRelationStats(stats: RelationStatsMap): void;
+declare function getRelationStats(): RelationStatsMap | undefined;
+declare function setModelStats(stats: ModelStatsMap): void;
+declare function getModelStats(): ModelStatsMap | undefined;
+declare function countIncludeDepth(includeSpec: Record<string, any>, model: Model, schemas: readonly Model[], depth?: number, modelMap?: Map<string, Model>): number;
+
+interface LimitsConfig {
+    /** Max nesting depth for WHERE clauses (AND/OR/NOT). Default: 50 */
+    MAX_QUERY_DEPTH: number;
+    /** Max elements in array params (in, hasSome, etc). Default: 10000 */
+    MAX_ARRAY_SIZE: number;
+    /** Max string length for LIKE/JSON string operators. Default: 10000 */
+    MAX_STRING_LENGTH: number;
+    /** Max nesting depth for HAVING clause. Default: 50 */
+    MAX_HAVING_DEPTH: number;
+    /** Max depth of nested include/select relations. Default: 5 */
+    MAX_INCLUDE_DEPTH: number;
+    /** Max number of relations included at a single level. Default: 10 */
+    MAX_INCLUDES_PER_LEVEL: number;
+    /** Max total correlated subqueries across the entire query. Default: 100 */
+    MAX_TOTAL_SUBQUERIES: number;
+    /** Max times a model can appear in its own include chain. Default: 2 */
+    MAX_SELF_REFERENTIAL_DEPTH: number;
+    /** Max nesting depth for NOT operator composition. Default: 50 */
+    MAX_NOT_DEPTH: number;
+    /** Postgres max integer for LIMIT/OFFSET. Default: 2147483647 */
+    MAX_LIMIT_OFFSET: number;
+    /** Minimum allowed negative take value. Default: -10000 */
+    MIN_NEGATIVE_TAKE: number;
+    /** Max depth for flat-join and lateral-join traversal. Default: 10 */
+    MAX_NESTED_JOIN_DEPTH: number;
+    /** Safety threshold before alias counter overflow. Default: 1000 */
+    MAX_ALIAS_COUNTER_THRESHOLD: number;
+    /** Max depth for relation-based orderBy resolution. Default: 10 */
+    MAX_RELATION_ORDER_BY_DEPTH: number;
+    /**
+     * @deprecated No-op since the array-agg include path was removed.
+     * Kept for non-breaking compatibility; will be removed in the next major version.
+     * Setting this value has no runtime effect.
+     */
+    JOIN_INCLUDE_MAX_DEPTH: number;
+    /** Max recursion depth for where-in segment resolution. Default: 10 */
+    MAX_WHERE_IN_RECURSIVE_DEPTH: number;
+    /** Max entries in the SQL query cache. Default: 1000 */
+    QUERY_CACHE_SIZE: number;
+    /** Max entries in the SQLite prepared statement cache. Default: 1000 */
+    STMT_CACHE_SIZE: number;
+}
+/**
+ * Override one or more query builder limits.
+ * Only provided keys are updated; others keep their current values.
+ */
+declare function setLimits(overrides: Partial<LimitsConfig>): void;
+/**
+ * Returns a frozen snapshot of the current limits.
+ */
+declare function getLimits(): Readonly<LimitsConfig>;
+/**
+ * Reset all limits to their built-in defaults.
+ */
+declare function resetLimits(): void;
+
+declare function loadExternalPlannerStats(filePath: string): boolean;
+
+/**
+ * Injectable shard-control slot.
+ *
+ * prisma-sql generates SQL; it never decides WHERE that SQL runs. A host
+ * application with sharded storage injects a ShardController that maps an
+ * EXPLICIT shard key to an executor. The key is always supplied by the call
+ * site — prisma-sql does not inspect query args to infer tenancy. Call sites
+ * that compose with prisma-guard get their keys from guard-validated shapes,
+ * so tenancy stays enforced in exactly one place.
+ */
+interface ShardExecutor {
+    execute(sql: string, params: unknown[]): Promise<Record<string, unknown>[]>;
+}
+interface ShardController<TKey> {
+    /** Fail closed: throw rather than return a default executor. */
+    resolve(key: TKey): Promise<ShardExecutor>;
+}
+type ToSQLFn = ReturnType<typeof createToSQL>;
+interface ShardRead<TKey> {
+    model: string;
+    method: PrismaMethod;
+    args?: Record<string, unknown>;
+}
+/**
+ * A read runner over prerendered SQL: generate, resolve the shard for the
+ * explicit key, execute there. No fallback executor exists by design — if the
+ * controller cannot resolve a key the read fails loudly instead of running
+ * somewhere wrong.
+ */
+declare const createShardedReader: <TKey>(toSQL: ToSQLFn, controller: ShardController<TKey>) => (key: TKey, read: ShardRead<TKey>) => Promise<Record<string, unknown>[]>;
+
+declare function buildSQL(model: Model, models: Model[], method: PrismaMethod, args: Record<string, unknown>, dialect: SqlDialect, options?: SqlBuildOptions): SqlResult;
+interface CreateToSQLOptions {
+    defaultOrRewrite?: OrRewriteMode;
+}
+declare function createToSQL(modelsOrDmmf: Model[] | DMMF.Document, dialect: SqlDialect, options?: CreateToSQLOptions): (model: string, method: PrismaMethod, args?: Record<string, unknown>, callOptions?: SqlBuildOptions) => SqlResult;
+declare function generateSQL(directive: DirectiveProps): SQLDirective;
+
+export { type BatchCountQuery, type BatchQuery, type LateralRelationMeta, type LimitsConfig, type Model, type ModelStats, type ModelStatsMap, type OrRewriteMode, type PrismaMethod, type PrismaSQLConfig, type PrismaSQLResult, type ReducerConfig, type ShardController, type ShardExecutor, type ShardRead, type SqlBuildOptions, type SqlResult, type StrategyConfig, type StreamReduceConfig, type StreamReduceOptions, type ToSQLFn, type TransactionOptions, type TransactionQuery, buildBatchCountSql, buildBatchSql, buildLateralReducerConfig, buildReducerConfig, buildSQL, countIncludeDepth, createProgressiveReducer, createShardedReader, createStreamingReducer, createToSQL, createTransactionExecutor, detectSqliteDateMode, executePostgresQuery, executeRaw, executeSqliteQuery, executeWhereInSegments, executeWhereInSegmentsStreaming, executeWithPreFetchedParents, extractCountValue, generateSQL, getLimits, getModelStats, getOrPrepareStatement, getPrimaryKeyField, getRelationStats, getRowTransformer, getStrategyConfig, loadExternalPlannerStats, normalizeParams, normalizeValue, parseBatchCountResults, parseBatchResults, planQueryStrategy, rebuildQueryCache, reduceFlatRows, reduceLateralRows, resetLimits, setJsonRowFactor, setLimits, setModelStats, setNormalizeDateMode, setRelationStats, setRoundtripRowEquivalent, setStrategyConfig, shouldSqliteUseGet, streamReduce, transformAggregateRow, transformQueryResults };

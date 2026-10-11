@@ -1,0 +1,28 @@
+import type { MarkdownItPlugin } from 'comark';
+/**
+ * Options for the emoji plugin.
+ */
+export interface EmojiOptions {
+    /**
+     * Add or override shortcodes. Values take precedence over the built-in set,
+     * so this can also be used to remap an existing shortcode.
+     *
+     * Pass a full dataset here to go beyond the curated built-in set — install a
+     * package such as `gemoji` and forward its map:
+     *
+     * @example
+     * ```ts
+     * import { nameToEmoji } from 'gemoji'
+     * emoji({ extend: nameToEmoji })
+     * ```
+     *
+     * @example
+     * ```ts
+     * emoji({ extend: { shipit: '🚀', myteam: '🦄' } })
+     * ```
+     */
+    extend?: Record<string, string>;
+}
+export declare const markdownItEmoji: MarkdownItPlugin;
+declare const _default: import("comark").ComarkPluginFactory<EmojiOptions, {}, {}>;
+export default _default;

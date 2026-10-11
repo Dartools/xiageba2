@@ -1,0 +1,7 @@
+interface YouTubeReadinessState {
+    controller?: AbortController;
+    promise: Promise<void>;
+}
+export declare function useYouTubeReadinessState(): YouTubeReadinessState;
+export declare function armYouTubeReadiness(state: YouTubeReadinessState): void;
+export {};

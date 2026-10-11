@@ -1,0 +1,10 @@
+/**
+ * Emit a per-request proxy page token into the SSR payload.
+ *
+ * The token authorizes client-side proxy calls (`/embed/x-image?url=...`,
+ * `/embed/bluesky?url=...`, etc.) without needing each URL to be signed
+ * ahead of time. It stays null when no proxy secret is configured, in
+ * which case `withSigning` passes requests through unchecked.
+ */
+declare const _default: import("nuxt/app").Plugin<Record<string, unknown>> & import("nuxt/app").ObjectPlugin<Record<string, unknown>>;
+export default _default;

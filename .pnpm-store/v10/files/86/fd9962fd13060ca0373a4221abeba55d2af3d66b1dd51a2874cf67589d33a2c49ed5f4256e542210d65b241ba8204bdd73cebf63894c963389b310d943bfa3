@@ -1,0 +1,15 @@
+export interface ImageProxyConfig {
+    allowedDomains: string[] | ((hostname: string) => boolean);
+    accept?: string;
+    userAgent?: string;
+    cacheMaxAge?: number;
+    /** Allowed response Content-Type prefixes. SVG is always rejected as active content. */
+    contentTypePrefixes?: string[];
+    /** Follow redirects after applying the same URL allowlist to every hop. */
+    followRedirects?: boolean;
+    /** Decode &amp; in URL query parameter */
+    decodeAmpersands?: boolean;
+    /** Unique name for the nitro cache group (defaults to derived from allowedDomains). */
+    cacheName?: string;
+}
+export declare function createImageProxyHandler(config: ImageProxyConfig): import("h3").EventHandler<import("h3").EventHandlerRequest, any>;

@@ -1,0 +1,18 @@
+import type { MarkdownDocument } from 'comark';
+export interface TocLink {
+    id: string;
+    text: string;
+    depth: number;
+    children?: TocLink[];
+}
+export interface Toc {
+    title: string;
+    depth: number;
+    searchDepth: number;
+    links: TocLink[];
+}
+export declare function generateFlatToc(body: MarkdownDocument, options: Toc): Toc;
+declare const _default: import("comark").ComarkPluginFactory<Partial<Toc>, {
+    toc: Toc;
+}, {}>;
+export default _default;

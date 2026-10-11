@@ -1,0 +1,45 @@
+import { useRegistryScript } from "../utils.js";
+import { CrispOptions } from "./schemas.js";
+export { CrispOptions };
+export function useScriptCrisp(_options) {
+  let readyPromise = Promise.resolve();
+  return useRegistryScript("crisp", (options) => ({
+    scriptInput: {
+      src: "https://client.crisp.chat/l.js"
+      // can't be bundled
+    },
+    schema: import.meta.dev ? CrispOptions : void 0,
+    scriptOptions: {
+      use() {
+        const wrapFn = (fn) => window.$crisp?.[fn] || ((...args) => {
+          readyPromise.then(() => window.$crisp[fn](...args));
+        });
+        return {
+          push: window.$crisp.push,
+          do: wrapFn("do"),
+          set: wrapFn("set"),
+          get: wrapFn("get"),
+          on: wrapFn("on"),
+          off: wrapFn("off"),
+          config: wrapFn("config"),
+          help: wrapFn("help")
+        };
+      }
+    },
+    clientInit: import.meta.server ? void 0 : () => {
+      window.$crisp = [];
+      window.CRISP_WEBSITE_ID = options.id;
+      if (options.runtimeConfig?.locale)
+        window.CRISP_RUNTIME_CONFIG = { locale: options.runtimeConfig.locale };
+      if (options.cookieDomain)
+        window.CRISP_COOKIE_DOMAIN = options.cookieDomain;
+      if (options.cookieExpiry)
+        window.CRISP_COOKIE_EXPIRATION = options.cookieExpiry;
+      if (options.tokenId)
+        window.CRISP_TOKEN_ID = options.tokenId;
+      readyPromise = new Promise((resolve) => {
+        window.CRISP_READY_TRIGGER = resolve;
+      });
+    }
+  }), _options);
+}

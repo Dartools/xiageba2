@@ -1,0 +1,14 @@
+/**
+ * Components syntax plugin for Comark.
+ *
+ * Enables block (`::name`) and inline (`:name[content]`) component syntax,
+ * plus span wrappers (`[text]` / `[text]{attrs}` when paired with attributes).
+ * On by default via `registerDefaultPlugins`.
+ *
+ * @see https://comark.dev/syntax/components
+ */
+import type { PluginSimple } from 'markdown-exit';
+/** markdown-it / markdown-exit adapter for Comark component + span syntax. */
+export declare const markdownItComponents: PluginSimple;
+declare const _default: import("../types.ts").ComarkPluginFactory<unknown, {}, {}>;
+export default _default;

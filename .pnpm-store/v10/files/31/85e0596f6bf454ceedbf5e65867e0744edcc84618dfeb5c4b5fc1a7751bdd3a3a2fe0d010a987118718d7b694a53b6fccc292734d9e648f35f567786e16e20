@@ -1,0 +1,2 @@
+export * from 'comark/plugins/attributes';
+export { default } from 'comark/plugins/attributes';

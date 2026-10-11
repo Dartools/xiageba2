@@ -1,0 +1,18 @@
+export function afterNextPaint(callback) {
+  let cancelled = false;
+  let innerFrame;
+  const outerFrame = requestAnimationFrame(() => {
+    if (cancelled)
+      return;
+    innerFrame = requestAnimationFrame(() => {
+      if (!cancelled)
+        callback();
+    });
+  });
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(outerFrame);
+    if (innerFrame !== void 0)
+      cancelAnimationFrame(innerFrame);
+  };
+}

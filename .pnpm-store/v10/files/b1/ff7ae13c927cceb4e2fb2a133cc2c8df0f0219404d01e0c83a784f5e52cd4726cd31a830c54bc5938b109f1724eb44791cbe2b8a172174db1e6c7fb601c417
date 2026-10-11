@@ -1,0 +1,50 @@
+import type { RegistryScriptInput, UseScriptContext } from '#nuxt-scripts/types';
+import { MetaPixelOptions } from './schemas.js';
+type StandardEvents = 'AddPaymentInfo' | 'AddToCart' | 'AddToWishlist' | 'CompleteRegistration' | 'Contact' | 'CustomizeProduct' | 'Donate' | 'FindLocation' | 'InitiateCheckout' | 'Lead' | 'Purchase' | 'Schedule' | 'Search' | 'StartTrial' | 'SubmitApplication' | 'Subscribe' | 'ViewContent';
+interface EventObjectProperties {
+    content_category?: string;
+    content_ids?: string[];
+    content_name?: string;
+    content_type?: string;
+    contents?: {
+        id: string;
+        quantity: number;
+    }[];
+    currency?: string;
+    delivery_category?: 'in_store' | 'curbside' | 'home_delivery';
+    num_items?: number;
+    predicted_ltv?: number;
+    search_string?: string;
+    status?: 'completed' | 'updated' | 'viewed' | 'added_to_cart' | 'removed_from_cart' | (string & {});
+    value?: number;
+    [key: string]: any;
+}
+type ConsentAction = 'grant' | 'revoke';
+type FbqArgs = ['track', StandardEvents, EventObjectProperties?] | ['trackCustom', string, EventObjectProperties?] | ['trackSingle', string, StandardEvents, EventObjectProperties?] | ['trackSingleCustom', string, string, EventObjectProperties?] | ['init', string] | ['init', number, Record<string, any>?] | ['consent', ConsentAction] | [string, ...any[]];
+type FbqFns = (...args: FbqArgs) => void;
+export interface MetaPixelApi {
+    fbq: FbqFns & {
+        push: FbqFns;
+        loaded: boolean;
+        version: string;
+        queue: any[];
+    };
+    _fbq: MetaPixelApi['fbq'];
+    callMethod?: FbqFns;
+}
+declare global {
+    interface Window {
+        fbq: MetaPixelApi['fbq'];
+        _fbq: MetaPixelApi['_fbq'];
+        callMethod?: MetaPixelApi['callMethod'];
+    }
+}
+export { MetaPixelOptions };
+export type MetaPixelInput = RegistryScriptInput<typeof MetaPixelOptions, true, false>;
+export interface MetaPixelConsent {
+    /** Call `fbq('consent','grant')`. */
+    grant: () => void;
+    /** Call `fbq('consent','revoke')`. */
+    revoke: () => void;
+}
+export declare function useScriptMetaPixel<T extends MetaPixelApi>(_options?: MetaPixelInput): UseScriptContext<T, MetaPixelConsent>;

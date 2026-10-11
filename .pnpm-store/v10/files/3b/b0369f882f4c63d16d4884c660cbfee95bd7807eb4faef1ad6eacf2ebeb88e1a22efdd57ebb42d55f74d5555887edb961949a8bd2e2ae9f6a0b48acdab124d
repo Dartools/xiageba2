@@ -1,0 +1,40 @@
+import type { RegistryScriptInput } from '#nuxt-scripts/types';
+import { RybbitAnalyticsOptions } from './schemas.js';
+export { RybbitAnalyticsOptions };
+export type RybbitAnalyticsInput = RegistryScriptInput<typeof RybbitAnalyticsOptions, false>;
+export interface RybbitAnalyticsApi {
+    /**
+     * Tracks a page view
+     */
+    pageview: () => void;
+    /**
+     * Tracks a custom event
+     * @param name Name of the event
+     * @param properties Optional properties for the event
+     */
+    event: (name: string, properties?: Record<string, any>) => void;
+    /**
+     * Sets a custom user ID for tracking logged-in users
+     * @param userId The user ID to set (will be stored in localStorage)
+     */
+    identify: (userId: string) => void;
+    /**
+     * Clears the stored user ID
+     */
+    clearUserId: () => void;
+    /**
+     * Gets the currently set user ID
+     * @returns The current user ID or null if not set
+     */
+    getUserId: () => string | null;
+    /**
+     * @deprecated use top level functions instead
+     */
+    rybbit: RybbitAnalyticsApi;
+}
+declare global {
+    interface Window {
+        rybbit: RybbitAnalyticsApi;
+    }
+}
+export declare function useScriptRybbitAnalytics<T extends RybbitAnalyticsApi>(_options?: RybbitAnalyticsInput): import("#nuxt-scripts/types").UseScriptContext<T>;

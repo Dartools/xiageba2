@@ -1,0 +1,132 @@
+/**
+ * Granular privacy controls for the first-party proxy.
+ * Each flag controls both headers AND body/query params for its domain.
+ */
+export interface ProxyPrivacy {
+    /** Anonymize IP (headers + body). When false, real IP is forwarded via x-forwarded-for. */
+    ip?: boolean;
+    /** Normalize User-Agent (headers + body) */
+    userAgent?: boolean;
+    /** Normalize Accept-Language (headers + body) */
+    language?: boolean;
+    /** Generalize screen resolution, viewport, hardware concurrency, device memory */
+    screen?: boolean;
+    /** Generalize timezone offset and IANA timezone names */
+    timezone?: boolean;
+    /** Anonymize hardware fingerprints: canvas/webgl/audio, plugins/fonts, browser versions, device info */
+    hardware?: boolean;
+}
+/**
+ * Privacy input: `true` = full anonymize, `false` = passthrough (still strips sensitive headers),
+ * or a `ProxyPrivacy` object for granular control (unset flags default to `false` — opt-in).
+ */
+export type ProxyPrivacyInput = boolean | ProxyPrivacy;
+/** Resolved privacy with all flags explicitly set. */
+export type ResolvedProxyPrivacy = Required<ProxyPrivacy>;
+/**
+ * Normalize a privacy input to a fully-resolved object.
+ * Privacy is opt-in: unset object flags default to `false`.
+ * Each script in the registry explicitly sets all flags for its needs.
+ * - `true` → all flags true (full anonymize)
+ * - `false` / `undefined` → all flags false (passthrough)
+ * - `{ ip: true, hardware: true }` → only those active, rest off
+ */
+export declare function resolvePrivacy(input?: ProxyPrivacyInput): ResolvedProxyPrivacy;
+/**
+ * Merge privacy settings: `override` fields take precedence over `base` field-by-field.
+ * When `override` is undefined, returns `base` unchanged.
+ * When `override` is a boolean, it fully replaces `base`.
+ * When `override` is an object, only explicitly-set fields override.
+ */
+export declare function mergePrivacy(base: ResolvedProxyPrivacy, override?: ProxyPrivacyInput): ResolvedProxyPrivacy;
+/**
+ * Headers that reveal user IP address - stripped in proxy mode,
+ * anonymized in anonymize mode.
+ */
+export declare const IP_HEADERS: string[];
+/**
+ * Headers that enable fingerprinting - normalized in anonymize mode.
+ */
+export declare const FINGERPRINT_HEADERS: string[];
+/**
+ * Sensitive headers that should never be forwarded to third parties.
+ */
+export declare const SENSITIVE_HEADERS: string[];
+/**
+ * Payload parameters relevant to privacy.
+ *
+ * Note: userId and userData are intentionally NOT modified by stripPayloadFingerprinting.
+ * Analytics services require user identifiers (cid, uid, fbp, etc.) and user data (ud, email)
+ * to function correctly. These are listed here for documentation and param-detection tests only.
+ * The privacy model anonymizes device/browser fingerprinting while preserving user-level analytics IDs.
+ */
+export declare const STRIP_PARAMS: {
+    ip: string[];
+    userId: string[];
+    userData: string[];
+    screen: string[];
+    hardware: string[];
+    platform: string[];
+    version: string[];
+    browserVersion: string[];
+    browserData: string[];
+    location: string[];
+    deviceInfo: string[];
+};
+/**
+ * Parameters that should be normalized (not stripped).
+ */
+export declare const NORMALIZE_PARAMS: {
+    language: string[];
+    userAgent: string[];
+};
+/**
+ * Anonymize an IP address by zeroing trailing segments.
+ */
+export declare function anonymizeIP(ip: string): string;
+/**
+ * Normalize User-Agent to browser family and major version only.
+ */
+export declare function normalizeUserAgent(ua: string): string;
+/**
+ * Normalize Accept-Language to primary language tag (preserving country).
+ * "en-US,en;q=0.9,fr;q=0.8" → "en-US"
+ */
+export declare function normalizeLanguage(lang: string): string;
+/**
+ * Generalize screen resolution to 3 coarse device-class buckets (mobile / tablet / desktop).
+ * Handles both combined "WxH" strings and individual dimension values (sh, sw).
+ *
+ * When `dimension` is specified, uses the correct bucket for that axis:
+ *   - 'width': [1920, 768, 360]
+ *   - 'height': [1080, 1024, 640]
+ * Without `dimension`, individual values use width thresholds (backward-compatible).
+ */
+export declare function generalizeScreen(value: unknown, dimension?: 'width' | 'height'): string | number;
+/**
+ * Generalize hardware concurrency / device memory to common bucket.
+ */
+export declare function generalizeHardware(value: unknown): number;
+/**
+ * Generalize a version string to major version, preserving the original format.
+ * "6.17.0" → "6.0.0", "143.0.7499.4" → "143.0.0.0"
+ */
+export declare function generalizeVersion(value: unknown): string;
+/**
+ * Generalize browser version list to major versions, preserving segment count.
+ * Handles Snapchat d_bvs format: [,{"brand":"Chrome","version":"143.0.7499.4"}...]
+ * Handles GA uafvl format: HeadlessChrome;143.0.7499.4|Chromium;143.0.7499.4|...
+ */
+export declare function generalizeBrowserVersions(value: unknown): string;
+/**
+ * Generalize timezone to reduce precision.
+ * IANA names → UTC offset string, numeric offsets → bucketed to 3-hour intervals.
+ */
+export declare function generalizeTimezone(value: unknown): string | number;
+/**
+ * Anonymize a combined device-info string (e.g. X/Twitter `dv` param).
+ * Parses the delimited string and generalizes fingerprinting components
+ * (timezone, language, screen dimensions) while keeping low-entropy values.
+ */
+export declare function anonymizeDeviceInfo(value: string): string;
+export declare function stripPayloadFingerprinting(payload: Record<string, unknown>, privacy?: ResolvedProxyPrivacy): Record<string, unknown>;

@@ -1,0 +1,60 @@
+<script setup>
+import { watch } from "vue";
+import { bindGoogleMapsEvents, useGoogleMapsResource } from "./useGoogleMapsResource";
+const props = defineProps({
+  src: { type: [String, Object], required: true },
+  style: { type: null, required: false }
+});
+const emit = defineEmits(["click", "contextmenu", "dblclick", "mousedown", "mousemove", "mouseout", "mouseover", "mouseup", "addfeature", "removefeature", "setgeometry", "setproperty", "removeproperty"]);
+const dataEvents = [
+  "click",
+  "contextmenu",
+  "dblclick",
+  "mousedown",
+  "mousemove",
+  "mouseout",
+  "mouseover",
+  "mouseup"
+];
+const featureEvents = [
+  "addfeature",
+  "removefeature",
+  "setgeometry",
+  "setproperty",
+  "removeproperty"
+];
+function loadGeoJson(src, layer) {
+  if (typeof src === "string")
+    layer.loadGeoJson(src);
+  else
+    layer.addGeoJson(src);
+}
+const dataLayer = useGoogleMapsResource({
+  create({ mapsApi, map }) {
+    const layer = new mapsApi.Data({ map });
+    if (props.style)
+      layer.setStyle(props.style);
+    loadGeoJson(props.src, layer);
+    bindGoogleMapsEvents(layer, emit, { withPayload: [...dataEvents, ...featureEvents] });
+    return layer;
+  },
+  cleanup(layer, { mapsApi }) {
+    mapsApi.event.clearInstanceListeners(layer);
+    layer.setMap(null);
+  }
+});
+watch(() => props.src, (src) => {
+  if (!dataLayer.value)
+    return;
+  dataLayer.value.forEach((feature) => dataLayer.value.remove(feature));
+  loadGeoJson(src, dataLayer.value);
+});
+watch(() => props.style, (style) => {
+  if (dataLayer.value)
+    dataLayer.value.setStyle(style ?? {});
+}, { deep: true });
+</script>
+
+<template>
+
+</template>

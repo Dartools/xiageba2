@@ -1,0 +1,19 @@
+import type { Node } from 'comark';
+export declare const VOID_ELEMENTS: Set<string>;
+interface HtmlTagInfo {
+    tag: string;
+    attrs: Record<string, unknown>;
+    isVoid: boolean;
+    isClose: boolean;
+}
+/**
+ * Parse a single inline HTML tag fragment (opening, closing, or void).
+ * Returns null if the content is not a recognisable HTML tag.
+ */
+export declare function parseInlineHtmlTag(html: string): HtmlTagInfo | null;
+/**
+ * Parse a full HTML string into Nodes using htmlparser2.
+ * Handles nested elements, text, void elements, and comments.
+ */
+export declare function htmlToNodes(html: string): Node[];
+export {};

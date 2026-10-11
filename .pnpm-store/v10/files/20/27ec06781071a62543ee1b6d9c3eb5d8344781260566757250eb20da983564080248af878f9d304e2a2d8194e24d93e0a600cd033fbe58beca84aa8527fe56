@@ -1,0 +1,56 @@
+import { code } from "./code.js";
+import { pre } from "./pre.js";
+import { hr } from "./hr.js";
+import { heading } from "./heading.js";
+import { p } from "./p.js";
+import { a } from "./a.js";
+import { ul } from "./ul.js";
+import { ol } from "./ol.js";
+import { li } from "./li.js";
+import { html } from "./html.js";
+import { strong } from "./strong.js";
+import { emphesis } from "./emphesis.js";
+import { blockquote } from "./blockquote.js";
+import { img } from "./img.js";
+import { del } from "./del.js";
+import { mdc } from "./mdc.js";
+import { br } from "./br.js";
+import { template } from "./template.js";
+import { table, thead, tbody, tr, th, td } from "./table.js";
+import { comment } from "./comment.js";
+import { math } from "./math.js";
+import { mermaid } from "./mermaid.js";
+export const handlers = {
+    code,
+    pre,
+    hr,
+    br,
+    h1: heading,
+    h2: heading,
+    h3: heading,
+    h4: heading,
+    h5: heading,
+    h6: heading,
+    p,
+    a,
+    ul,
+    ol,
+    li,
+    html,
+    strong,
+    em: emphesis,
+    blockquote,
+    img,
+    del,
+    mdc,
+    template,
+    table,
+    thead,
+    tbody,
+    tr,
+    th,
+    td,
+    comment,
+    math,
+    mermaid,
+};

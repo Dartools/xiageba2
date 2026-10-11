@@ -1,0 +1,34 @@
+import { useRegistryScript } from "../utils.js";
+import { RedditPixelOptions } from "./schemas.js";
+export { RedditPixelOptions };
+export function useScriptRedditPixel(_options) {
+  return useRegistryScript("redditPixel", (options) => {
+    return {
+      scriptInput: {
+        src: "https://www.redditstatic.com/ads/pixel.js",
+        async: true
+      },
+      clientInit: import.meta.server ? void 0 : () => {
+        const rdt = function(...args) {
+          if (rdt.sendEvent) {
+            rdt.sendEvent(rdt, args);
+          } else {
+            rdt.callQueue.push(args);
+          }
+        };
+        rdt.callQueue = [];
+        window.rdt = rdt;
+        if (options?.id) {
+          rdt("init", options.id);
+          rdt("track", "PageVisit");
+        }
+      },
+      schema: import.meta.dev ? RedditPixelOptions : void 0,
+      scriptOptions: {
+        use() {
+          return { rdt: window.rdt };
+        }
+      }
+    };
+  }, _options);
+}

@@ -1,0 +1,49 @@
+import { useScriptEventPage } from "../composables/useScriptEventPage.js";
+import { useRegistryScript } from "../utils.js";
+import { LinkedInInsightOptions } from "./schemas.js";
+export { LinkedInInsightOptions };
+export function useScriptLinkedInInsight(_options) {
+  let enableAutoSpaTracking = false;
+  const instance = useRegistryScript("linkedinInsight", (options) => {
+    enableAutoSpaTracking = !!options.enableAutoSpaTracking;
+    return {
+      scriptInput: {
+        src: "https://snap.licdn.com/li.lms-analytics/insight.min.js",
+        crossorigin: false
+      },
+      schema: import.meta.dev ? LinkedInInsightOptions : void 0,
+      scriptOptions: {
+        use() {
+          return { lintrk: window.lintrk };
+        }
+      },
+      clientInit: import.meta.server ? void 0 : () => {
+        const ids = Array.isArray(options.id) ? options.id : [options.id];
+        if (options.eventId)
+          window._linkedin_event_id = options.eventId;
+        if (options.enableAutoSpaTracking)
+          window._wait_for_lintrk = true;
+        window._linkedin_partner_id = ids[0];
+        window._linkedin_data_partner_ids = window._linkedin_data_partner_ids || [];
+        for (const id of ids) {
+          if (!window._linkedin_data_partner_ids.includes(id))
+            window._linkedin_data_partner_ids.push(id);
+        }
+        if (!window.lintrk) {
+          const lintrk = function(cmd, ...args) {
+            ;
+            lintrk.q.push([cmd, ...args]);
+          };
+          lintrk.q = [];
+          window.lintrk = lintrk;
+        }
+      }
+    };
+  }, _options);
+  if (import.meta.client && enableAutoSpaTracking) {
+    useScriptEventPage(() => {
+      window.lintrk?.("track");
+    });
+  }
+  return instance;
+}

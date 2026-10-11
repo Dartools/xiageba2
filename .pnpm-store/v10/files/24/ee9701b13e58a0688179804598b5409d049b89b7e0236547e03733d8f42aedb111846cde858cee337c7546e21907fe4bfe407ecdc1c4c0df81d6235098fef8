@@ -1,0 +1,100 @@
+{
+  "name": "prisma-sql",
+  "version": "1.92.0",
+  "description": "Prerender Prisma queries to SQL and run them through postgres.js or better-sqlite3. Same Prisma API and types, lower read overhead.",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "prisma-sql-generator": "./dist/generator.cjs",
+    "prisma-sql-collect-stats": "./dist/collect-planner-stats.cjs",
+    "prisma-sql-verify": "./dist/verify.cjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./generator": {
+      "types": "./dist/generator.d.ts",
+      "import": "./dist/generator.js",
+      "require": "./dist/generator.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "docs:dev": "yarn --cwd docs-site dev",
+    "docs:build": "yarn --cwd docs-site build",
+    "docs:preview": "yarn --cwd docs-site preview",
+    "test": "vitest --config=vitest.config.ts",
+    "test:ordering-types": "vitest --config=vitest.config.ts run tests/integration/versioned-ordering-types.test.ts",
+    "test:generate-clients": "node --import tsx tests/helpers/generate-test-clients.ts",
+    "test:coverage": "vitest --coverage",
+    "test:e2e": "vitest run tests/e2e",
+    "bench": "npx tsx tests/helpers/run-benchmarks.ts",
+    "prisma:generate": "npx prisma generate --schema=tests/prisma/schema.prisma",
+    "prisma:migrate": "npx prisma migrate dev --schema=tests/prisma/schema.prisma",
+    "prisma:reset": "npx prisma db push --force-reset --skip-generate --schema=tests/prisma/schema.prisma",
+    "prepublishOnly": "npm run build",
+    "sonar-cli": "sonar-scanner   -Dsonar.projectKey=b   -Dsonar.sources=./src   -Dsonar.host.url=http://localhost:9000   -Dsonar.login=sqp_0d5fbc16a275fceb6458d193a8aa8a975956edc1",
+    "sonar": "npm run sonar-cli && npx tsx scripts/sonar.ts"
+  },
+  "keywords": [
+    "prisma",
+    "sql",
+    "query",
+    "optimizer",
+    "postgresql",
+    "sqlite",
+    "cloudflare",
+    "d1",
+    "performance",
+    "typescript",
+    "generator"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/multipliedtwice/prisma-to-sql.git"
+  },
+  "bugs": {
+    "url": "https://github.com/multipliedtwice/prisma-to-sql/issues"
+  },
+  "homepage": "https://github.com/multipliedtwice/prisma-to-sql#readme",
+  "author": "multipliedtwice <multipliedtwice@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "@dee-wan/schema-parser": "1.5.0",
+    "@prisma/generator-helper": "^7.4.1",
+    "@prisma/internals": "^7.4.1",
+    "dotenv": "^17.3.1",
+    "postgres": "^3.4.8"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
+    "@prisma/adapter-better-sqlite3": "^7.4.1",
+    "@prisma/adapter-pg": "^7.4.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^25.2.3",
+    "@vitest/coverage-v8": "4.0.18",
+    "better-sqlite3": "^12.6.2",
+    "drizzle-kit": "^0.31.8",
+    "drizzle-orm": "^0.45.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18",
+    "@prisma/client": "7.4.1",
+    "prisma": "7.4.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

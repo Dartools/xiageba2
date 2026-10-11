@@ -1,0 +1,9 @@
+import { comarkAttributes } from "../attributes.js";
+import { textContent } from "../../../utils/index.js";
+export function code(node, _state) {
+    const [_, attrs] = node;
+    const attrsString = Object.keys(attrs).length > 0 ? comarkAttributes(attrs) : '';
+    const content = textContent(node);
+    const fence = content.includes('`') ? '``' : '`';
+    return `${fence}${content}${fence}${attrsString}`;
+}

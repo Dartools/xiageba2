@@ -1,0 +1,13 @@
+import * as v8 from './v8.js';
+export { v8 };
+export interface LegacySnippets {
+    safari10NoModuleFix: string;
+    legacyPolyfillId: string;
+    legacyEntryId: string;
+    systemJSInlineCode: string;
+    detectModernBrowserDetector: string;
+    detectModernBrowserCode: string;
+    dynamicFallbackInlineCode: string;
+    modernChunkLegacyGuard: string;
+}
+export declare function selectSnippets(_major: number): LegacySnippets;

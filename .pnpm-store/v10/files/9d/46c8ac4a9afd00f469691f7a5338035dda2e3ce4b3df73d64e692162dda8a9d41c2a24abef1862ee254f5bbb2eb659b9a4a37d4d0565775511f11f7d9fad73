@@ -1,0 +1,8 @@
+import { textContent } from "../../../utils/index.js";
+export function math(node, state, parent) {
+    const content = textContent(node);
+    if (parent?.some((child, index) => index > 1 && typeof child === 'string')) {
+        return `$$${content}$$`;
+    }
+    return `$$\n${content}\n$$${state.context.blockSeparator}`;
+}

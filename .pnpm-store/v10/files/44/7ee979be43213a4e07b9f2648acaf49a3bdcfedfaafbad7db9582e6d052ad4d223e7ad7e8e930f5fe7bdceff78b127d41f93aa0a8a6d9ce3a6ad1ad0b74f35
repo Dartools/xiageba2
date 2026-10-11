@@ -1,0 +1,4 @@
+import { useState } from "nuxt/app";
+export function useScriptProxyToken() {
+  return useState("nuxt-scripts:proxy-token", () => null);
+}

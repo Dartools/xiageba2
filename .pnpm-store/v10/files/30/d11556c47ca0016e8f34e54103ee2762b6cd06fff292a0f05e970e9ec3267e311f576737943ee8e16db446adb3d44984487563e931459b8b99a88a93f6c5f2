@@ -1,0 +1,217 @@
+// #region Tree Utils
+import { decodeHTML } from 'entities';
+/**
+ * Check whether a value is a {@link MarkdownDocument} (or a bare `{ nodes }` document-like).
+ */
+export function isMarkdownDocument(value) {
+    return !!value && typeof value === 'object' && Array.isArray(value.nodes);
+}
+/**
+ * Get the text content of a Markdown AST node
+ *
+ * @param node - The node
+ * @param options - The options
+ * @param options.decodeUnicodeEntities - Whether to decode Unicode entities
+ * @returns The text content
+ */
+export function textContent(node, options = {}) {
+    if (typeof node === 'string') {
+        if (options.decodeUnicodeEntities) {
+            return decodeHTML(node);
+        }
+        return node;
+    }
+    let out = '';
+    const len = node.length;
+    for (let i = 2; i < len; i++) {
+        out += textContent(node[i], options);
+    }
+    return out;
+}
+function* walkGenerator(document, checker) {
+    function* walk(node, parent, index) {
+        let currentNode = node;
+        if (checker(node)) {
+            const res = yield node;
+            if (res === false) {
+                // remove the node from the parent
+                ;
+                parent.splice(index, 1);
+                return true; // signal that node was removed
+            }
+            if (res !== undefined) {
+                ;
+                parent[index] = res;
+                currentNode = res;
+            }
+        }
+        if (Array.isArray(currentNode) && currentNode.length > 2) {
+            // Use a while loop to handle removals correctly - don't increment if node was removed
+            let i = 2;
+            while (i < currentNode.length) {
+                const childRemoved = yield* walk(currentNode[i], currentNode, i);
+                if (childRemoved) {
+                    // If removed, i stays the same (next node is now at this index)
+                    continue;
+                }
+                i += 1;
+            }
+        }
+        return false;
+    }
+    // Use a while loop to handle removals correctly - don't increment if node was removed
+    let i = 0;
+    while (i < document.nodes.length) {
+        const removed = yield* walk(document.nodes[i], document.nodes, i);
+        if (removed) {
+            // If removed, i stays the same (next node is now at this index)
+            continue;
+        }
+        i += 1;
+    }
+}
+/**
+ * Visit a Markdown document and apply a visitor function to each node
+ *
+ * @param document - The Markdown document
+ * @param checker - A function that checks if a node should be visited
+ * @param visitor - A function that visits a node
+ */
+export function visit(document, checker, 
+// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+visitor) {
+    const iterator = walkGenerator(document, checker);
+    let step = iterator.next();
+    while (!step.done) {
+        const res = visitor(step.value);
+        step = iterator.next(res);
+    }
+}
+export async function visitAsync(document, checker, visitor) {
+    const iterator = walkGenerator(document, checker);
+    let step = iterator.next();
+    while (!step.done) {
+        const res = await visitor(step.value);
+        step = iterator.next(res);
+    }
+}
+// #region String Utils
+export function indent(text, { ignoreFirstLine = false, level = 1, width } = {}) {
+    const pad = width ? ' '.repeat(width) : '  '.repeat(level);
+    return text
+        .split('\n')
+        .map((line, index) => {
+        if (ignoreFirstLine && index === 0) {
+            return line;
+        }
+        return line ? pad + line : line;
+    })
+        .join('\n');
+}
+/**
+ * Convert a string to pascal case
+ * @param str - The string to convert
+ * @returns The pascal case string
+ */
+export function pascalCase(str) {
+    return str
+        ? splitByCase(str)
+            .map((p) => (p ? p[0].toUpperCase() + p.slice(1) : ''))
+            .join('')
+        : '';
+}
+/**
+ * Convert a string to kebab case
+ * @param str - The string to convert
+ * @returns The kebab case string
+ */
+export function kebabCase(str) {
+    return str
+        ? splitByCase(str)
+            .map((p) => p.toLowerCase())
+            .join('-')
+        : '';
+}
+/**
+ * Convert a string to camel case
+ * @param str - The string to convert
+ * @returns The camel case string
+ */
+export function camelCase(str) {
+    if (!str) {
+        return '';
+    }
+    str = pascalCase(str);
+    return str.charAt(0).toLowerCase() + str.slice(1);
+}
+// split a string by case
+function splitByCase(str) {
+    const parts = [];
+    if (!str) {
+        return parts;
+    }
+    let buff = '';
+    let previousUpper;
+    let previousSplitter;
+    for (let i = 0; i < str.length; i++) {
+        const char = str[i];
+        // Fast splitter check using direct character comparisons
+        const isSplitter = char === '-' || char === '_' || char === '/' || char === '.';
+        if (isSplitter === true) {
+            parts.push(buff);
+            buff = '';
+            previousUpper = void 0;
+            continue;
+        }
+        // Fast number check using character codes
+        const charCode = char.charCodeAt(0);
+        const isNumber = charCode >= 48 && charCode <= 57; // '0' to '9'
+        // Fast uppercase check using character codes
+        const isUpper = isNumber ? void 0 : charCode >= 65 && charCode <= 90; // 'A' to 'Z'
+        if (previousSplitter === false) {
+            if (previousUpper === false && isUpper === true) {
+                parts.push(buff);
+                buff = char;
+                previousUpper = isUpper;
+                continue;
+            }
+            if (previousUpper === true && isUpper === false && buff.length > 1) {
+                const lastChar = buff[buff.length - 1];
+                parts.push(buff.slice(0, buff.length - 1));
+                buff = lastChar + char;
+                previousUpper = isUpper;
+                continue;
+            }
+        }
+        buff += char;
+        previousUpper = isUpper;
+        previousSplitter = isSplitter;
+    }
+    parts.push(buff);
+    return parts;
+}
+// #endregion
+// #region Object Utils
+/**
+ * Retrieves a value from a nested object using a dot-separated key path.
+ * @param data - The object to retrieve the value from.
+ * @param key - The dot-separated key path to the value.
+ * @returns The value at the specified key path, or `undefined` if the key path does not exist.
+ */
+export function get(data, key) {
+    const keys = key.split('.');
+    let value = data;
+    for (const k of keys) {
+        if (value && typeof value === 'object' && k in value) {
+            value = value[k];
+        }
+        else {
+            return undefined;
+        }
+    }
+    return value;
+}
+// #endregion
+// Re-export the shared attribute resolvers so framework renderers can apply the
+// same `:prefix` semantics as the HTML/ANSI handlers without duplicating logic.
+export { resolveAttributes, resolveAttribute } from "../internal/stringify/attributes.js";

@@ -1,0 +1,77 @@
+import { defineNuxtPlugin, useNuxtApp, useRuntimeConfig } from "nuxt/app";
+export default defineNuxtPlugin(() => {
+  const nuxtApp = useNuxtApp();
+  const config = useRuntimeConfig();
+  const version = config.public["nuxt-scripts"]?.version;
+  const firstPartyData = config.public["nuxt-scripts-devtools"] || null;
+  let lastScripts = {};
+  let disposed = false;
+  let requestController;
+  function pushState(scripts) {
+    if (disposed)
+      return;
+    if (scripts)
+      lastScripts = scripts;
+    const route = nuxtApp.$router?.currentRoute?.value;
+    if (route?.path?.startsWith("/__nuxt-scripts"))
+      return;
+    requestController?.abort();
+    const controller = new AbortController();
+    requestController = controller;
+    fetch("/__nuxt-scripts-api/state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        scripts: serializeScripts(lastScripts),
+        version,
+        firstPartyData,
+        route: route ? { path: route.path, fullPath: route.fullPath, query: route.query } : null
+      })
+    }).catch((error) => {
+      if (import.meta.dev && error?.name !== "AbortError")
+        console.warn("[nuxt-scripts] Failed to sync standalone devtools state:", error);
+    }).finally(() => {
+      if (requestController === controller)
+        requestController = void 0;
+    });
+  }
+  const stopScriptsHook = nuxtApp.hooks.hook("scripts:updated", (ctx) => {
+    pushState(ctx.scripts);
+  });
+  const stopRouterHook = nuxtApp.$router?.afterEach(() => {
+    pushState();
+  });
+  let stopUnmountHook = () => {
+  };
+  const cleanup = () => {
+    if (disposed)
+      return;
+    disposed = true;
+    requestController?.abort();
+    requestController = void 0;
+    lastScripts = {};
+    stopScriptsHook();
+    stopRouterHook?.();
+    stopUnmountHook();
+  };
+  stopUnmountHook = nuxtApp.hooks.hook("app:unmount", cleanup);
+  pushState(nuxtApp._scripts || {});
+});
+function serializeScripts(scripts) {
+  const result = {};
+  for (const [key, script] of Object.entries(scripts)) {
+    result[key] = {
+      src: script.src,
+      key: script.key,
+      registryKey: script.registryKey,
+      registryMeta: script.registryMeta,
+      loadedFrom: script.loadedFrom && script.loadedFrom !== "unknown" ? script.loadedFrom : void 0,
+      events: script.events,
+      networkRequests: script.networkRequests,
+      // Serialize $script status as a plain string (methods won't transfer)
+      $script: script.$script ? { status: typeof script.$script.status === "object" ? script.$script.status.value : script.$script.status } : { status: "unknown" }
+    };
+  }
+  return result;
+}

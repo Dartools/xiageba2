@@ -1,0 +1,91 @@
+import { createHmac } from "node:crypto";
+import { getQuery } from "#nuxt-scripts/h3";
+import {
+  PAGE_TOKEN_MAX_AGE,
+  PAGE_TOKEN_PARAM,
+  PAGE_TOKEN_TS_PARAM,
+  SIG_LENGTH,
+  SIG_PARAM
+} from "./sign-constants.js";
+export { PAGE_TOKEN_MAX_AGE, PAGE_TOKEN_PARAM, PAGE_TOKEN_TS_PARAM, SIG_LENGTH, SIG_PARAM };
+export function canonicalizeQuery(query) {
+  const keys = Object.keys(query).filter((k) => k !== SIG_PARAM && query[k] !== void 0 && query[k] !== null).sort();
+  const parts = [];
+  for (const key of keys) {
+    const value = query[key];
+    const encodedKey = encodeURIComponent(key);
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item === void 0 || item === null)
+          continue;
+        parts.push(`${encodedKey}=${encodeURIComponent(serializeValue(item))}`);
+      }
+    } else {
+      parts.push(`${encodedKey}=${encodeURIComponent(serializeValue(value))}`);
+    }
+  }
+  return parts.join("&");
+}
+function serializeValue(value) {
+  if (typeof value === "string")
+    return value;
+  if (typeof value === "object")
+    return JSON.stringify(value);
+  return String(value);
+}
+export function signProxyUrl(path, query, secret) {
+  const canonical = canonicalizeQuery(query);
+  const input = canonical ? `${path}?${canonical}` : path;
+  return createHmac("sha256", secret).update(input).digest("hex").slice(0, SIG_LENGTH);
+}
+export function buildSignedProxyUrl(path, query, secret) {
+  const sig = signProxyUrl(path, query, secret);
+  const canonical = canonicalizeQuery(query);
+  const queryString = canonical ? `${canonical}&${SIG_PARAM}=${sig}` : `${SIG_PARAM}=${sig}`;
+  return `${path}?${queryString}`;
+}
+export function generateProxyToken(secret, timestamp) {
+  return createHmac("sha256", secret).update(`proxy-access:${timestamp}`).digest("hex").slice(0, SIG_LENGTH);
+}
+export function verifyProxyToken(token, timestamp, secret, maxAge = PAGE_TOKEN_MAX_AGE, now = Math.floor(Date.now() / 1e3)) {
+  if (!token || !secret || typeof timestamp !== "number")
+    return false;
+  if (token.length !== SIG_LENGTH)
+    return false;
+  const age = now - timestamp;
+  if (age > maxAge || age < -60)
+    return false;
+  const expected = generateProxyToken(secret, timestamp);
+  return constantTimeEqual(expected, token);
+}
+export function verifyProxyRequest(event, secret, maxAge) {
+  if (!secret)
+    return false;
+  const query = getQuery(event);
+  const rawSig = query[SIG_PARAM];
+  const sig = Array.isArray(rawSig) ? rawSig[0] : rawSig;
+  if (typeof sig === "string" && sig.length === SIG_LENGTH) {
+    const path = (event.path || "").split("?")[0] || "";
+    const expected = signProxyUrl(path, query, secret);
+    if (constantTimeEqual(expected, sig))
+      return true;
+  }
+  const rawToken = query[PAGE_TOKEN_PARAM];
+  const rawTs = query[PAGE_TOKEN_TS_PARAM];
+  const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
+  const ts = Array.isArray(rawTs) ? rawTs[0] : rawTs;
+  if (typeof token === "string" && ts !== void 0) {
+    const timestamp = Number(ts);
+    if (!Number.isNaN(timestamp))
+      return verifyProxyToken(token, timestamp, secret, maxAge);
+  }
+  return false;
+}
+export function constantTimeEqual(a, b) {
+  if (a.length !== b.length)
+    return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++)
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}

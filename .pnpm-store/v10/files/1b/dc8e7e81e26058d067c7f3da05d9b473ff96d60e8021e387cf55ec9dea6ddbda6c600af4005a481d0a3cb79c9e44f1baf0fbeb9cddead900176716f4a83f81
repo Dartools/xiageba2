@@ -1,0 +1,20 @@
+const TLD_WILDCARD_RE = /^(?:com|[a-z]{2}|(?:com|co)\.[a-z]{2})$/i;
+const SUBDOMAIN_LABEL_RE = /^[^.]+$/;
+export function matchDomain(domain, pattern) {
+  if (!pattern.includes("*"))
+    return domain === pattern || domain.endsWith(`.${pattern}`);
+  if (pattern.startsWith("*.") && pattern.startsWith("*")) {
+    const suffix = pattern.slice(2);
+    if (!domain.endsWith(`.${suffix}`))
+      return false;
+    const label = domain.slice(0, -(suffix.length + 1));
+    return SUBDOMAIN_LABEL_RE.test(label);
+  }
+  if (!pattern.endsWith("*") || pattern.indexOf("*") !== pattern.length - 1)
+    return false;
+  const prefix = pattern.slice(0, -1);
+  if (!domain.startsWith(prefix))
+    return false;
+  const tld = domain.slice(prefix.length);
+  return TLD_WILDCARD_RE.test(tld);
+}

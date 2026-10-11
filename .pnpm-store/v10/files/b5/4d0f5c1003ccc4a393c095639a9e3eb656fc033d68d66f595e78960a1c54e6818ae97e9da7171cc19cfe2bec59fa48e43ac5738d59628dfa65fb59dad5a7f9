@@ -1,0 +1,173 @@
+import { computed, defineComponent, h } from 'vue';
+import { Markdown } from "./components/Markdown.js";
+import { MarkdownDocument } from "./components/MarkdownDocument.js";
+export { Markdown } from "./components/Markdown.js";
+export { MarkdownDocument } from "./components/MarkdownDocument.js";
+export function defineMarkdownComponent(config = {}) {
+    const { name, ...parseOptions } = config;
+    return defineComponent({
+        name: name ?? 'MarkdownComponent',
+        props: {
+            /**
+             * The markdown content to parse and render
+             */
+            value: {
+                type: String,
+                default: undefined,
+            },
+            /**
+             * Parser options
+             */
+            options: {
+                type: Object,
+                default: () => ({}),
+            },
+            /**
+             * Additional plugins to use
+             */
+            plugins: {
+                type: Array,
+                default: () => [],
+            },
+            /**
+             * Strip wrapper tags from the top level of the document — shorthand for
+             * `options.unwrap`. `true` unwraps `<p>`; a space-separated string or
+             * array unwraps the listed tags.
+             */
+            unwrap: {
+                type: [Boolean, String, Array],
+                default: false,
+            },
+            /**
+             * Custom component mappings for element tags
+             * Key: tag name (e.g., 'h1', 'p', 'MyComponent')
+             * Value: Vue component
+             */
+            components: {
+                type: Object,
+                default: () => ({}),
+            },
+            /**
+             * Dynamic component resolver function
+             * Used to resolve components that aren't in the components map
+             */
+            componentsManifest: {
+                type: Function,
+                default: undefined,
+            },
+            /**
+             * Enable streaming mode with stream-specific components
+             */
+            streaming: {
+                type: Boolean,
+                default: false,
+            },
+            /**
+             * If document has a <!-- more --> comment, only render the content before the comment
+             */
+            summary: {
+                type: Boolean,
+                default: false,
+            },
+            /**
+             * If caret is true, a caret will be appended to the document's last text node
+             */
+            caret: {
+                type: [Boolean, Object],
+                default: false,
+            },
+        },
+        setup(props, { slots }) {
+            const options = computed(() => ({
+                ...parseOptions,
+                ...props.options,
+            }));
+            const plugins = computed(() => [...(config.plugins || []), ...(props.plugins || [])]);
+            const components = computed(() => ({
+                ...config.components,
+                ...props.components,
+            }));
+            return () => {
+                const component = config.extends || Markdown;
+                return h(component, {
+                    value: props.value,
+                    options: options.value,
+                    plugins: plugins.value,
+                    unwrap: props.unwrap,
+                    components: components.value,
+                    componentsManifest: props.componentsManifest,
+                    streaming: props.streaming,
+                    summary: props.summary,
+                    caret: props.caret,
+                    class: config.class,
+                }, {
+                    default: slots.default,
+                });
+            };
+        },
+    });
+}
+export function defineMarkdownDocumentComponent(config = {}) {
+    return defineComponent({
+        name: config.name ?? 'MarkdownDocumentComponent',
+        props: {
+            /**
+             * The parsed Markdown document to render
+             */
+            value: {
+                type: Object,
+                default: undefined,
+            },
+            /**
+             * Custom component mappings for element tags
+             * Key: tag name (e.g., 'h1', 'p', 'MyComponent')
+             * Value: Vue component
+             */
+            components: {
+                type: Object,
+                default: () => ({}),
+            },
+            /**
+             * Dynamic component resolver function
+             * Used to resolve components that aren't in the components map
+             */
+            componentsManifest: {
+                type: Function,
+                default: undefined,
+            },
+            /**
+             * Enable streaming mode with stream-specific components
+             */
+            streaming: {
+                type: Boolean,
+                default: false,
+            },
+            /**
+             * If caret is true, a caret will be appended to the document's last text node
+             */
+            caret: {
+                type: [Boolean, Object],
+                default: false,
+            },
+        },
+        setup(props, { slots }) {
+            const components = computed(() => ({
+                ...config.components,
+                ...props.components,
+            }));
+            return () => {
+                const component = config.extends || MarkdownDocument;
+                return h(component, {
+                    value: props.value,
+                    components: components.value,
+                    componentsManifest: props.componentsManifest,
+                    streaming: props.streaming,
+                    caret: props.caret,
+                    class: config.class,
+                }, {
+                    default: slots.default,
+                });
+            };
+        },
+    });
+}

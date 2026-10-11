@@ -1,0 +1,7 @@
+import { createImageProxyHandler } from "./utils/image-proxy.js";
+export default createImageProxyHandler({
+  allowedDomains: [
+    "cdn.bsky.app",
+    "av-cdn.bsky.app"
+  ]
+});

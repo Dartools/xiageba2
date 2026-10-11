@@ -1,0 +1,336 @@
+import { Buffer } from "node:buffer";
+import { createFetch } from "ofetch";
+import { hash } from "ohash";
+import { defineCachedFunction } from "#nuxt-scripts/nitro";
+import { NUXT_SCRIPTS_CACHE_BASE } from "./cache-config.js";
+import { closePublicNetworkDispatcher, createPublicNetworkDispatcher, isPublicNetworkHostname } from "./network-host.js";
+const DEFAULT_BINARY_MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+const DEFAULT_JSON_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+const TIMEOUT_ERROR_NAMES = /* @__PURE__ */ new Set(["AbortError", "BodyTimeoutError", "HeadersTimeoutError", "TimeoutError"]);
+const DEFAULT_UPSTREAM_TIMEOUT_MS = 1e4;
+const MAX_TRACKED_FAILURES = 512;
+export const UPSTREAM_FAILURE_MAX_AGE = 60;
+export function isSafeHttpsUrl(url) {
+  return url.protocol === "https:" && !url.username && !url.password && (!url.port || url.port === "443") && isPublicNetworkHostname(url.hostname);
+}
+function upstreamError(message, statusCode, statusMessage, cause) {
+  return Object.assign(new Error(message, cause === void 0 ? void 0 : { cause }), {
+    statusCode,
+    statusMessage
+  });
+}
+function asUpstreamError(error) {
+  if (typeof error?.statusCode === "number")
+    return error;
+  const timedOut = isTimeoutError(error);
+  return upstreamError(
+    `Upstream request failed: ${error?.message || "unknown error"}`,
+    timedOut ? 504 : 502,
+    timedOut ? "Gateway Timeout" : "Upstream request failed",
+    error
+  );
+}
+function isTimeoutError(error) {
+  const candidate = error;
+  const code = candidate?.cause?.code;
+  return TIMEOUT_ERROR_NAMES.has(candidate?.name || "") || TIMEOUT_ERROR_NAMES.has(candidate?.cause?.name || "") || typeof code === "string" && code.includes("TIMEOUT");
+}
+function createFailureGate(maxAge) {
+  const failures = /* @__PURE__ */ new Map();
+  const failureWindow = Math.min(UPSTREAM_FAILURE_MAX_AGE, maxAge) * 1e3;
+  return {
+    replay(key) {
+      const failure = failures.get(key);
+      if (!failure)
+        return;
+      if (Date.now() >= failure.until) {
+        failures.delete(key);
+        return;
+      }
+      throw upstreamError(failure.error.message, failure.error.statusCode, failure.error.statusMessage);
+    },
+    record(key, error) {
+      const failure = error;
+      if (failures.size >= MAX_TRACKED_FAILURES)
+        failures.delete(failures.keys().next().value);
+      failures.set(key, {
+        until: Date.now() + failureWindow,
+        error: {
+          message: failure?.message || "Upstream request failed",
+          statusCode: failure?.statusCode ?? 502,
+          statusMessage: failure?.statusMessage || "Upstream request failed"
+        }
+      });
+    }
+  };
+}
+function resolveMaxResponseBytes(value, fallback) {
+  const maxBytes = value ?? fallback;
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0)
+    throw new TypeError("maxResponseBytes must be a non-negative safe integer");
+  return maxBytes;
+}
+async function cancelBody(body, error) {
+  if (!body)
+    return;
+  await body.cancel(error).catch((cancelError) => {
+    if (error) {
+      Object.assign(error, { cause: cancelError });
+      return;
+    }
+    throw cancelError;
+  });
+}
+async function readBoundedResponseBody(body, options) {
+  if (!body)
+    return new Uint8Array();
+  const reader = body.getReader();
+  const chunks = [];
+  let size = 0;
+  let timeoutId;
+  const timeoutError = upstreamError("Upstream response body timed out", 504, "Gateway Timeout");
+  const timeout = options.timeoutMs > 0 ? new Promise((_resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(timeoutError);
+      void reader.cancel(timeoutError).catch((cancelError) => Object.assign(timeoutError, { cause: cancelError }));
+    }, options.timeoutMs);
+  }) : void 0;
+  try {
+    while (true) {
+      const result = await (timeout ? Promise.race([reader.read(), timeout]) : reader.read());
+      if (result.done)
+        break;
+      size += result.value.byteLength;
+      if (size > options.maxBytes) {
+        const error = upstreamError(
+          `Upstream response exceeded ${options.maxBytes} bytes`,
+          502,
+          "Upstream response too large"
+        );
+        await reader.cancel(error).catch((cancelError) => Object.assign(error, { cause: cancelError }));
+        throw error;
+      }
+      chunks.push(result.value);
+    }
+  } finally {
+    if (timeoutId !== void 0)
+      clearTimeout(timeoutId);
+  }
+  const data = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    data.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return data;
+}
+async function rejectResponse(response, error) {
+  await cancelBody(response._data, error);
+  throw error;
+}
+function parseUpstreamUrl(url) {
+  try {
+    return new URL(url);
+  } catch (cause) {
+    throw upstreamError("Upstream URL is invalid", 400, "Invalid upstream URL", cause);
+  }
+}
+function assertAllowedUrl(url, allowUrl) {
+  if (allowUrl && !allowUrl(url))
+    throw upstreamError("Upstream URL is not allowed", 403, "Upstream URL not allowed");
+}
+function resolveRedirect(response, currentUrl, redirectCount, policy) {
+  if (response.status < 300 || response.status >= 400 || response.status === 304)
+    return;
+  const location = response.headers.get("location");
+  if (!location)
+    throw upstreamError("Upstream redirect has no Location header", 502, "Invalid upstream redirect");
+  if (redirectCount >= (policy.maxRedirects ?? 5))
+    throw upstreamError("Upstream redirect limit exceeded", 502, "Too many upstream redirects");
+  let nextUrl;
+  try {
+    nextUrl = new URL(location, currentUrl);
+  } catch (cause) {
+    throw upstreamError("Upstream redirect URL is invalid", 502, "Invalid upstream redirect", cause);
+  }
+  assertAllowedUrl(nextUrl, policy.allowUrl);
+  return nextUrl;
+}
+async function fetchBoundedUpstream(url, options) {
+  let currentUrl = parseUpstreamUrl(url);
+  assertAllowedUrl(currentUrl, options.allowUrl);
+  if (options.redirect === "follow" && !options.allowUrl)
+    throw new Error("Automatic redirects require an allowUrl redirect policy");
+  const network = await createPublicNetworkDispatcher();
+  let primaryError;
+  try {
+    const safeFetch = createFetch({ fetch: network.fetch });
+    for (let redirectCount = 0; ; redirectCount++) {
+      const response = await safeFetch.raw(currentUrl.toString(), {
+        responseType: "stream",
+        timeout: options.timeoutMs,
+        redirect: "manual",
+        ignoreResponseError: true,
+        headers: options.headers
+      });
+      if (options.redirect === "follow") {
+        let nextUrl;
+        try {
+          nextUrl = resolveRedirect(response, currentUrl, redirectCount, options);
+        } catch (error) {
+          await rejectResponse(response, error);
+        }
+        if (nextUrl) {
+          await cancelBody(response._data);
+          currentUrl = nextUrl;
+          continue;
+        }
+      }
+      if (!options.ignoreResponseError && response.status >= 400 && response.status < 600) {
+        const upstreamFault = response.status >= 500;
+        await rejectResponse(response, upstreamError(
+          `Upstream request failed with status ${response.status}`,
+          upstreamFault ? 502 : response.status,
+          upstreamFault ? "Upstream request failed" : response.statusText || "Upstream request failed"
+        ));
+      }
+      const contentType = response.headers.get("content-type");
+      const isRedirect = response.status >= 300 && response.status < 400 && response.status !== 304;
+      if (!isRedirect && (options.allowContentType || options.contentTypePrefixes?.length)) {
+        const normalizedContentType = contentType?.split(";", 1)[0]?.trim().toLowerCase();
+        if (options.contentTypePrefixes?.length && (!normalizedContentType || !options.contentTypePrefixes.some((prefix) => normalizedContentType.startsWith(prefix)))) {
+          await rejectResponse(
+            response,
+            upstreamError("Upstream response content type is not allowed", 415, "Unsupported upstream content type")
+          );
+        }
+        if (options.allowContentType && (!normalizedContentType || !options.allowContentType(normalizedContentType))) {
+          await rejectResponse(
+            response,
+            upstreamError("Upstream response content type is not allowed", 415, "Unsupported upstream content type")
+          );
+        }
+      }
+      const data = await readBoundedResponseBody(response._data, {
+        maxBytes: options.maxResponseBytes,
+        timeoutMs: options.timeoutMs
+      });
+      return { contentType, data, status: response.status };
+    }
+  } catch (error) {
+    primaryError = asUpstreamError(error);
+    throw primaryError;
+  } finally {
+    await closePublicNetworkDispatcher(network, primaryError);
+  }
+}
+export function createCachedBinaryFetch(name, maxAge, config = {}) {
+  const maxResponseBytes = resolveMaxResponseBytes(config.maxResponseBytes, DEFAULT_BINARY_MAX_RESPONSE_BYTES);
+  const failureGate = createFailureGate(maxAge);
+  const cacheKey = (url, opts) => {
+    if (!opts)
+      return hash(url);
+    const parts = [url];
+    if (opts.headers) {
+      const entries = Object.entries(opts.headers).sort(([a], [b]) => a.localeCompare(b));
+      for (const [k, v] of entries)
+        parts.push(`${k}=${v}`);
+    }
+    if (opts.redirect)
+      parts.push(`redirect=${opts.redirect}`);
+    if (opts.ignoreResponseError !== void 0)
+      parts.push(`ignoreResponseError=${opts.ignoreResponseError}`);
+    return hash(parts);
+  };
+  const gateKey = (url, opts) => `${cacheKey(url, opts)}:${opts?.timeout ?? DEFAULT_UPSTREAM_TIMEOUT_MS}`;
+  const cached = defineCachedFunction(
+    async (url, opts) => {
+      const key = gateKey(url, opts);
+      failureGate.replay(key);
+      const response = await fetchBoundedUpstream(url, {
+        allowContentType: config.allowContentType,
+        allowUrl: config.allowUrl,
+        headers: opts?.headers,
+        ignoreResponseError: opts?.ignoreResponseError ?? false,
+        maxRedirects: config.maxRedirects,
+        maxResponseBytes,
+        redirect: opts?.redirect ?? (config.allowUrl ? "follow" : "manual"),
+        timeoutMs: opts?.timeout ?? DEFAULT_UPSTREAM_TIMEOUT_MS
+      }).catch((error) => {
+        failureGate.record(key, error);
+        throw error;
+      });
+      return {
+        base64: response.data.byteLength ? Buffer.from(response.data).toString("base64") : "",
+        contentType: response.contentType,
+        status: response.status
+      };
+    },
+    {
+      base: NUXT_SCRIPTS_CACHE_BASE,
+      name,
+      maxAge,
+      swr: true,
+      staleMaxAge: maxAge,
+      getKey: cacheKey
+    }
+  );
+  return async (url, opts) => {
+    const result = await cached(url, opts);
+    return {
+      ...result,
+      body: result.base64 ? Buffer.from(result.base64, "base64") : Buffer.alloc(0)
+    };
+  };
+}
+export function createCachedJsonFetch(name, maxAge, getKey, config) {
+  const maxResponseBytes = resolveMaxResponseBytes(config.maxResponseBytes, DEFAULT_JSON_MAX_RESPONSE_BYTES);
+  const failureGate = createFailureGate(maxAge);
+  const cacheKey = (url, opts) => hash(getKey(url, opts));
+  const gateKey = (url, opts) => `${cacheKey(url, opts)}:${opts?.timeout ?? DEFAULT_UPSTREAM_TIMEOUT_MS}`;
+  return defineCachedFunction(
+    async (url, opts) => {
+      const key = gateKey(url, opts);
+      failureGate.replay(key);
+      const response = await fetchBoundedUpstream(url, {
+        allowUrl: config.allowUrl,
+        contentTypePrefixes: config.contentTypePrefixes,
+        headers: opts?.headers,
+        ignoreResponseError: false,
+        maxRedirects: config.maxRedirects,
+        maxResponseBytes,
+        redirect: "follow",
+        timeoutMs: opts?.timeout ?? DEFAULT_UPSTREAM_TIMEOUT_MS
+      }).catch((error) => {
+        failureGate.record(key, error);
+        throw error;
+      });
+      const text = new TextDecoder().decode(response.data);
+      let data;
+      if (config.responseType === "text") {
+        data = text;
+      } else {
+        try {
+          data = JSON.parse(text);
+        } catch (cause) {
+          throw upstreamError("Upstream response is not valid JSON", 502, "Invalid upstream response", cause);
+        }
+      }
+      try {
+        config.validateResponse?.(data);
+      } catch (error) {
+        failureGate.record(key, error);
+        throw error;
+      }
+      return data;
+    },
+    {
+      base: NUXT_SCRIPTS_CACHE_BASE,
+      name,
+      maxAge,
+      swr: true,
+      staleMaxAge: maxAge,
+      getKey: cacheKey
+    }
+  );
+}

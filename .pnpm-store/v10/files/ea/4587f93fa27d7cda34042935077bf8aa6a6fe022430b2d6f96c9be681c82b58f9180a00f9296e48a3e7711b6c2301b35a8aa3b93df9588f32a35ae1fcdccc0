@@ -1,0 +1,59 @@
+import type { HTMLAttributes } from 'vue';
+import type { ElementScriptTrigger } from '../types.js';
+interface CalendlyPrefill {
+    name?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+    customAnswers?: Record<string, string>;
+}
+interface CalendlyUtm {
+    utmCampaign?: string;
+    utmSource?: string;
+    utmMedium?: string;
+    utmContent?: string;
+    utmTerm?: string;
+}
+interface CalendlyPageSettings {
+    backgroundColor?: string;
+    hideEventTypeDetails?: boolean;
+    hideLandingPageDetails?: boolean;
+    hideGdprBanner?: boolean;
+    primaryColor?: string;
+    textColor?: string;
+}
+type __VLS_Props = {
+    url: string;
+    trigger?: ElementScriptTrigger;
+    prefill?: CalendlyPrefill;
+    utm?: CalendlyUtm;
+    pageSettings?: CalendlyPageSettings;
+    rootAttrs?: HTMLAttributes;
+    aboveTheFold?: boolean;
+    minHeight?: string;
+};
+type __VLS_Slots = {
+    default?: () => any;
+    loading?: () => any;
+    awaitingLoad?: () => any;
+    error?: () => any;
+};
+declare const __VLS_base: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
+    error: () => any;
+    ready: (api: {
+        Calendly: typeof window.Calendly;
+    }) => any;
+}, string, import("vue").PublicProps, Readonly<__VLS_Props> & Readonly<{
+    onError?: (() => any) | undefined;
+    onReady?: ((api: {
+        Calendly: typeof window.Calendly;
+    }) => any) | undefined;
+}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
+declare const __VLS_export: __VLS_WithSlots<typeof __VLS_base, __VLS_Slots>;
+declare const _default: typeof __VLS_export;
+export default _default;
+type __VLS_WithSlots<T, S> = T & {
+    new (): {
+        $slots: S;
+    };
+};

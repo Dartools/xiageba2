@@ -1,0 +1,67 @@
+export interface PunctuationOptions {
+    /**
+     * Convert straight quotes to smart (curly) quotes
+     * @default true
+     */
+    quotes?: boolean | string | [string, string, string, string];
+    /**
+     * Convert -- to en-dash and --- to em-dash
+     * @default true
+     */
+    dashes?: boolean;
+    /**
+     * Convert ... to ellipsis character and normalize trailing dots after ? and !
+     * @default true
+     */
+    ellipsis?: boolean;
+    /**
+     * Convert (c), (r), (tm), +- to ©, ®, ™, ±
+     * @default true
+     */
+    symbols?: boolean;
+    /**
+     * Normalize repeated punctuation: ???? → ???, !!!! → !!!, ,, → ,
+     * @default true
+     */
+    normalize?: boolean;
+}
+/**
+ * Punctuation plugin for comark
+ *
+ * Transforms common punctuation patterns into their typographically correct Unicode characters:
+ * - Smart (curly) quotes: "text" → \u201Ctext\u201D, 'text' → \u2018text\u2019
+ * - Dashes: -- → \u2013 (en-dash), --- → \u2014 (em-dash)
+ * - Ellipsis: ... → \u2026, ?.... → ?.., !.... → !..
+ * - Symbols: (c) → \u00A9, (r) → \u00AE, (tm) → \u2122, +- → \u00B1
+ * - Normalize: ???? → ???, !!!! → !!!, ,, → ,
+ *
+ * Does not transform text inside code, pre, math, kbd, script, or style elements.
+ *
+ * Supports locale-aware quote characters via the `quotes` option:
+ * - String of 4 characters: `'«»„"'` (open double, close double, open single, close single)
+ * - Array of 4 strings: `['«\xA0', '\xA0»', '‹\xA0', '\xA0›']` for French (with nbsp)
+ *
+ * @param options Punctuation configuration
+ *
+ * @example
+ * ```ts
+ * import { parseMarkdown } from 'comark'
+ * import punctuation from 'comark/plugins/punctuation'
+ *
+ * const result = await parseMarkdown('"Hello" -- world...', {
+ *   plugins: [punctuation()]
+ * })
+ *
+ * // Locale-aware quotes (Russian)
+ * const result2 = await parseMarkdown('"Hello"', {
+ *   plugins: [punctuation({ quotes: '«»„"' })]
+ * })
+ *
+ * // French quotes with non-breaking spaces
+ * const result3 = await parseMarkdown('"Hello"', {
+ *   plugins: [punctuation({ quotes: ['«\xA0', '\xA0»', '‹\xA0', '\xA0›'] })]
+ * })
+ * ```
+ */
+declare const _default: import("comark").ComarkPluginFactory<PunctuationOptions, {}, {}>;
+export default _default;

@@ -1,0 +1,10 @@
+import type { UseScriptContext } from '#nuxt-scripts/types';
+import type { UsercentricsApi, UsercentricsCmp, UsercentricsConsent } from '../registry/usercentrics.js';
+interface UsercentricsEventTarget {
+    __ucCmp?: UsercentricsCmp;
+    addEventListener: Window['addEventListener'];
+    removeEventListener: Window['removeEventListener'];
+}
+type HookAppUnmount = (callback: () => void) => () => void;
+export declare function attachUsercentricsConsent<T extends UsercentricsApi>(instance: UseScriptContext<T, UsercentricsConsent>, target: UsercentricsEventTarget, hookAppUnmount: HookAppUnmount): void;
+export {};

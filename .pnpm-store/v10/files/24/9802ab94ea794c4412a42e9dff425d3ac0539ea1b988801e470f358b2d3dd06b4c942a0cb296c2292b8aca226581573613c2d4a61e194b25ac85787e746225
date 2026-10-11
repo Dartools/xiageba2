@@ -1,0 +1,21 @@
+import type { LuxGlobal, UserConfig } from '@speedcurve/lux';
+import type { RouteLocationNormalized } from 'vue-router';
+import type { RegistryScriptInput, UseScriptContext } from '#nuxt-scripts/types';
+import { SpeedCurveOptions } from './schemas.js';
+export { SpeedCurveOptions };
+export interface SpeedCurveApi {
+    LUX: LuxGlobal;
+}
+declare global {
+    interface Window {
+        LUX?: LuxGlobal;
+        LUX_ae?: ErrorEvent[];
+        LUX_al?: PerformanceEntry[];
+    }
+}
+export type SpeedCurveInput = Omit<RegistryScriptInput<typeof SpeedCurveOptions>, 'label'> & Omit<UserConfig, 'label'> & {
+    label?: string | ((to: RouteLocationNormalized) => string | false) | false;
+};
+export declare function useScriptSpeedCurve<T extends SpeedCurveApi>(_options?: SpeedCurveInput): UseScriptContext<T>;
+export declare function applyConfig(options: SpeedCurveInput): void;
+export declare function installAutoTracker(options?: SpeedCurveInput): void;

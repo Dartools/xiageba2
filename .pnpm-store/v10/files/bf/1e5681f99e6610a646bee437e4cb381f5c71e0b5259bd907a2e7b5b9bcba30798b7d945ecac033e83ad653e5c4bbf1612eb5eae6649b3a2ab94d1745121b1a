@@ -1,0 +1,3 @@
+import type { State } from 'comark/render';
+import type { ElementNode } from 'comark';
+export declare function a(node: ElementNode, state: State): Promise<string>;

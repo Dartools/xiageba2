@@ -1,0 +1,2 @@
+import type { StateInline } from 'markdown-exit';
+export default function html_inline(state: StateInline, silent: boolean): boolean;

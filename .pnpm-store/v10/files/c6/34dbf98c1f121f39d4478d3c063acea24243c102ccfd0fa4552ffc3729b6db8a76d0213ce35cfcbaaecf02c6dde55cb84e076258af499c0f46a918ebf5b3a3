@@ -1,0 +1,88 @@
+import { logger } from "../logger.js";
+import { createAbortablePromise, createAbortError } from "./abortable-promise.js";
+export function attachUsercentricsConsent(instance, target, hookAppUnmount) {
+  if (instance.consent)
+    return;
+  let readyApi;
+  let readyPromise;
+  let readyController;
+  let stopAppUnmount = () => {
+  };
+  let disposed = true;
+  const cleanupReadyListener = () => {
+    if (disposed)
+      return;
+    disposed = true;
+    readyController?.abort();
+    readyController = void 0;
+    const stop = stopAppUnmount;
+    stopAppUnmount = () => {
+    };
+    stop();
+  };
+  const armReadyListener = () => {
+    readyApi = void 0;
+    readyPromise = void 0;
+    readyController = new AbortController();
+    disposed = false;
+    stopAppUnmount = hookAppUnmount(cleanupReadyListener);
+  };
+  const whenReady = () => {
+    const controller = readyController;
+    if (disposed || !controller)
+      return Promise.reject(createAbortError("Usercentrics readiness wait was aborted"));
+    if (readyApi)
+      return Promise.resolve(readyApi);
+    if (!readyPromise) {
+      readyPromise = createAbortablePromise((resolve) => {
+        const onReady = () => {
+          const api2 = target.__ucCmp;
+          if (!api2)
+            return;
+          readyApi = api2;
+          resolve(api2);
+        };
+        target.addEventListener("UC_CMP_API_READY", onReady);
+        const api = target.__ucCmp;
+        if (api?.isInitialized) {
+          Promise.resolve().then(() => api.isInitialized()).then((initialized) => {
+            if (initialized && !controller.signal.aborted)
+              onReady();
+          }).catch((error) => {
+            if (!controller.signal.aborted)
+              logger.debug("[usercentrics] Waiting for UC_CMP_API_READY after isInitialized() failed", error);
+          });
+        }
+        return () => target.removeEventListener("UC_CMP_API_READY", onReady);
+      }, {
+        signal: controller.signal,
+        abortMessage: "Usercentrics readiness wait was aborted"
+      });
+    }
+    return readyPromise;
+  };
+  armReadyListener();
+  const originalRemove = instance.remove;
+  const originalLoad = instance.load;
+  instance.remove = () => {
+    cleanupReadyListener();
+    return originalRemove();
+  };
+  instance.load = () => {
+    if (disposed)
+      armReadyListener();
+    return originalLoad();
+  };
+  instance.consent = {
+    whenReady,
+    onConsentChange(cb) {
+      const handler = (event) => cb(event.detail, event);
+      target.addEventListener("UC_UI_CMP_EVENT", handler);
+      return () => target.removeEventListener("UC_UI_CMP_EVENT", handler);
+    },
+    showFirstLayer: () => target.__ucCmp?.showFirstLayer?.(),
+    showSecondLayer: () => target.__ucCmp?.showSecondLayer?.(),
+    acceptAll: () => target.__ucCmp?.acceptAllConsents?.(),
+    denyAll: () => target.__ucCmp?.denyAllConsents?.()
+  };
+}

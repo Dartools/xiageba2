@@ -1,0 +1,32 @@
+import type { RegistryScriptInput, UseScriptContext } from '#nuxt-scripts/types';
+import { MixpanelAnalyticsOptions } from './schemas.js';
+export { MixpanelAnalyticsOptions };
+export type MixpanelAnalyticsInput = RegistryScriptInput<typeof MixpanelAnalyticsOptions>;
+export interface MixpanelAnalyticsApi {
+    mixpanel: {
+        track: (event: string, properties?: Record<string, any>) => void;
+        identify: (distinctId: string) => void;
+        reset: () => void;
+        people: {
+            set: (properties: Record<string, any>) => void;
+        };
+        register: (properties: Record<string, any>) => void;
+        init: (token: string, config?: Record<string, any>) => void;
+        /** Opt the user in to tracking. Available after the real SDK loads. */
+        opt_in_tracking?: () => void;
+        /** Opt the user out of tracking. Available after the real SDK loads. */
+        opt_out_tracking?: () => void;
+    };
+}
+declare global {
+    interface Window {
+        mixpanel: MixpanelAnalyticsApi['mixpanel'];
+    }
+}
+export interface MixpanelConsent {
+    /** Call `mixpanel.opt_in_tracking()`. */
+    optIn: () => void;
+    /** Call `mixpanel.opt_out_tracking()`. For boot-time opt-out, use `defaultConsent: 'opt-out'` instead. */
+    optOut: () => void;
+}
+export declare function useScriptMixpanelAnalytics<T extends MixpanelAnalyticsApi>(_options?: MixpanelAnalyticsInput): UseScriptContext<T, MixpanelConsent>;

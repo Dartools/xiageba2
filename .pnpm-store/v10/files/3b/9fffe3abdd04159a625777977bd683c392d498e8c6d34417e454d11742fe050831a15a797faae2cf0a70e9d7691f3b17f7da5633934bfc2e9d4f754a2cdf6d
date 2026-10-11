@@ -1,0 +1,4 @@
+/**
+ * Closes unclosed markdown tables
+ */
+export declare function closeTables(markdown: string): string;

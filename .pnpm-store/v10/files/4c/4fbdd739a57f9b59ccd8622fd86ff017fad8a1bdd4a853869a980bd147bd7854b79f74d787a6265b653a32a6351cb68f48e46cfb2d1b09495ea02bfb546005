@@ -1,0 +1,22 @@
+import { useRegistryScript } from "../utils.js";
+import { FathomAnalyticsOptions } from "./schemas.js";
+export { FathomAnalyticsOptions };
+export function useScriptFathomAnalytics(_options) {
+  return useRegistryScript("fathomAnalytics", (options) => ({
+    scriptInput: {
+      src: "https://cdn.usefathom.com/script.js",
+      // append the data attr's
+      ...Object.entries(options).filter(([key]) => ["site", "spa", "auto", "canonical", "honorDnt"].includes(key)).reduce((acc, [_key, value]) => {
+        const key = _key === "honorDnt" ? "honor-dnt" : _key;
+        acc[`data-${key}`] = value;
+        return acc;
+      }, {})
+    },
+    schema: import.meta.dev ? FathomAnalyticsOptions : void 0,
+    scriptOptions: {
+      use() {
+        return window.fathom;
+      }
+    }
+  }), _options);
+}

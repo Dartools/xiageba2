@@ -1,0 +1,10 @@
+import type { InjectionKey, Ref, ShallowRef } from 'vue';
+export declare const MAP_INJECTION_KEY: InjectionKey<{
+    map: ShallowRef<google.maps.Map | undefined>;
+    mapsApi: Ref<typeof google.maps | undefined>;
+    /** Close the previously active InfoWindow and register a new one as active */
+    activateInfoWindow: (iw: google.maps.InfoWindow) => void;
+}>;
+export declare const MARKER_INJECTION_KEY: InjectionKey<{
+    advancedMarkerElement: ShallowRef<google.maps.marker.AdvancedMarkerElement | undefined>;
+}>;

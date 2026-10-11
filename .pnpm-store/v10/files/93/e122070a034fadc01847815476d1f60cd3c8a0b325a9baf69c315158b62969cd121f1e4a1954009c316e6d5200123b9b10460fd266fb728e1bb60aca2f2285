@@ -1,0 +1,65 @@
+import { withQuery } from "ufo";
+import { useRegistryScript } from "#nuxt-scripts/utils";
+import { GoogleTagManagerOptions } from "./schemas.js";
+export { GoogleTagManagerOptions };
+export function useScriptGoogleTagManager(options) {
+  return useRegistryScript(
+    options?.key || "googleTagManager",
+    (opts) => {
+      const dataLayerName = opts?.l ?? opts?.dataLayer ?? "dataLayer";
+      return {
+        scriptInput: {
+          src: withQuery("https://www.googletagmanager.com/gtm.js", {
+            id: opts.id,
+            l: opts.l,
+            gtm_auth: opts.auth,
+            gtm_preview: opts.preview,
+            gtm_cookies_win: opts.cookiesWin ? "x" : void 0,
+            gtm_debug: opts.debug ? "x" : void 0,
+            gtm_npa: opts.npa ? "1" : void 0,
+            gtm_data_layer: opts.dataLayer,
+            gtm_env: opts.envName,
+            gtm_auth_referrer_policy: opts.authReferrerPolicy
+          })
+        },
+        schema: import.meta.dev ? GoogleTagManagerOptions : void 0,
+        scriptOptions: {
+          use: () => {
+            return {
+              dataLayer: window[dataLayerName],
+              google_tag_manager: window.google_tag_manager
+            };
+          }
+        },
+        gcmConsent: {
+          // Match the gtag.js contract: enqueue an `Arguments` object, not a plain Array,
+          // so GTM/Tag Assistant/Analytics Debugger recognise the consent command. See #770/#771.
+          push: (_proxy, action, state) => {
+            const dl = window[dataLayerName] = window[dataLayerName] || [];
+            (function(..._args) {
+              dl.push(arguments);
+            })("consent", action, state);
+          }
+        },
+        clientInit: import.meta.server ? void 0 : () => {
+          window[dataLayerName] = window[dataLayerName] || [];
+          function gtag(..._args) {
+            window[dataLayerName].push(arguments);
+          }
+          window.gtag = gtag;
+          if (opts.defaultConsent) {
+            const entries = Array.isArray(opts.defaultConsent) ? opts.defaultConsent : [opts.defaultConsent];
+            for (const entry of entries)
+              gtag("consent", "default", entry);
+          }
+          options?.onBeforeGtmStart?.(gtag);
+          window[dataLayerName].push({
+            "gtm.start": Date.now(),
+            "event": "gtm.js"
+          });
+        }
+      };
+    },
+    options
+  );
+}

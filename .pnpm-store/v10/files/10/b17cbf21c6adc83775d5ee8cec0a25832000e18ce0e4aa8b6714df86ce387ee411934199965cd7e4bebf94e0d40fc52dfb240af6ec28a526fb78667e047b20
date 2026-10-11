@@ -1,0 +1,4 @@
+export interface ComarkModuleOptions {
+}
+declare const _default: import("nuxt/schema").NuxtModule<ComarkModuleOptions, ComarkModuleOptions, false>;
+export default _default;

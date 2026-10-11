@@ -1,0 +1,18 @@
+import type { DumpOptions } from 'js-yaml';
+/**
+ * Parse frontmatter from content
+ * @param content - The content to parse
+ * @returns The content and data
+ */
+export declare function parseFrontmatter(content: string): {
+    content: string;
+    data: Record<string, any>;
+    frontmatterText: string;
+};
+/**
+ * Render frontmatter to content
+ * @param data - The data to render
+ * @param content - The content to render
+ * @returns The rendered content
+ */
+export declare function renderFrontmatter(data: Record<string, any> | undefined | null, content?: string, yamlOptions?: DumpOptions): string;

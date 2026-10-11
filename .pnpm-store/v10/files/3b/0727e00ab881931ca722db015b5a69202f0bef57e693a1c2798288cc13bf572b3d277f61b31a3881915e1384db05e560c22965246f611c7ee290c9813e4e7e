@@ -1,0 +1,45 @@
+import { createAbortablePromise } from "./abortable-promise.js";
+const readinessByWindow = /* @__PURE__ */ new WeakMap();
+export function useYouTubeReadinessState() {
+  const existing = readinessByWindow.get(window);
+  if (existing)
+    return existing;
+  const state = { promise: Promise.resolve() };
+  readinessByWindow.set(window, state);
+  return state;
+}
+export function armYouTubeReadiness(state) {
+  state.controller?.abort();
+  const controller = new AbortController();
+  const target = window;
+  state.controller = controller;
+  state.promise = createAbortablePromise((resolve) => {
+    const previousReady = target.onYouTubeIframeAPIReady;
+    let onReady;
+    const restoreReady = () => {
+      if (target.onYouTubeIframeAPIReady !== onReady)
+        return;
+      if (previousReady)
+        target.onYouTubeIframeAPIReady = previousReady;
+      else
+        delete target.onYouTubeIframeAPIReady;
+    };
+    onReady = () => {
+      restoreReady();
+      try {
+        previousReady?.call(target);
+      } catch (error) {
+        if (import.meta.dev)
+          console.error("[nuxt-scripts] Previous onYouTubeIframeAPIReady handler failed:", error);
+      } finally {
+        resolve();
+      }
+    };
+    target.onYouTubeIframeAPIReady = onReady;
+    return restoreReady;
+  }, {
+    signal: controller.signal,
+    abortMessage: "YouTube API readiness wait was aborted"
+  });
+  void state.promise.then(void 0, () => void 0);
+}
