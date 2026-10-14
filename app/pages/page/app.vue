@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { onMounted, ref, watch, computed } from "vue";
 import type { ButtonProps } from "@nuxt/ui";
 import {
   DEFAULT_APP_PREVIEW_IMAGE,
@@ -44,20 +44,15 @@ const versionText = computed(() => {
   return "";
 });
 
-/** CTA 按钮组：配置了下载地址才展示 */
-const ctaLinks = computed<ButtonProps[]>(() => {
-  if (!hasApk.value) return [];
-  return [
-    {
-      label: "安卓 APK 下载",
-      icon: "i-lucide-download",
-      to: appConfig.value.apkUrl,
-      target: "_blank",
-      color: "primary",
-      size: "lg",
-    },
-  ];
-});
+/** APK 下载按钮（悬停展示下载地址二维码） */
+const downloadLink = computed<ButtonProps>(() => ({
+  label: "安卓 APK 下载",
+  icon: "i-lucide-download",
+  to: appConfig.value.apkUrl,
+  target: "_blank",
+  color: "primary",
+  size: "lg",
+}));
 
 useSeoMeta({
   title: "APP 下载",
@@ -67,6 +62,35 @@ useSeoMeta({
   twitterTitle: "APP 下载",
   twitterDescription: `下载 APP 客户端 - ${siteShortTitle}`,
 });
+
+const qrCodeUrl = ref("");
+
+/**
+ * 生成指定内容的二维码（如 APK 下载地址）
+ *
+ * qrcode 是纯客户端依赖（约 244KB），按需 import 避免进入首屏 bundle；
+ * 参照 Qrcode.vue 的做法：不在 setup 顶层 await，避免 SSR 阻塞与额外 chunk 请求。
+ */
+let qrcodeLib: typeof import("qrcode") | null = null;
+
+const renderQrCode = async () => {
+  if (import.meta.server) return;
+  if (!appConfig.value.apkUrl) {
+    qrCodeUrl.value = "";
+    return;
+  }
+  if (!qrcodeLib) {
+    qrcodeLib = await import("qrcode");
+  }
+  qrCodeUrl.value = await qrcodeLib.toDataURL(appConfig.value.apkUrl, {
+    margin: 1,
+    width: 320,
+  });
+};
+
+// 挂载后才生成（客户端可用 window/QR 库），内容变化时重新生成
+onMounted(renderQrCode);
+watch(() => appConfig.value.apkUrl, renderQrCode);
 </script>
 
 <template>
@@ -74,7 +98,6 @@ useSeoMeta({
     <UPageCTA
       orientation="horizontal"
       variant="soft"
-      :links="ctaLinks"
       :ui="{
         container: 'py-10 sm:py-16 gap-6 sm:gap-10',
       }"
@@ -124,6 +147,44 @@ useSeoMeta({
         class="mx-auto w-44 sm:w-56 rounded-xl shadow-lg ring-1 ring-default"
         loading="lazy"
       />
+
+      <!-- 下载按钮：鼠标悬停弹出 APK 下载地址二维码 -->
+      <template #links>
+        <UPopover
+          v-if="hasApk"
+          mode="hover"
+          arrow
+          :open-delay="120"
+          :close-delay="200"
+          :content="{ side: 'top', sideOffset: 10, collisionPadding: 12 }"
+          :ui="{ content: 'p-3' }"
+        >
+          <UButton v-bind="downloadLink" />
+
+          <template #content>
+            <div class="flex flex-col items-center gap-2 w-40">
+              <div
+                class="size-36 bg-white rounded-lg p-1.5 flex items-center justify-center"
+              >
+                <img
+                  v-if="qrCodeUrl"
+                  :src="qrCodeUrl"
+                  alt="二维码"
+                  class="w-full h-full"
+                />
+                <UIcon
+                  v-else
+                  name="i-lucide-loader-circle"
+                  class="size-5 animate-spin text-muted"
+                />
+              </div>
+              <p class="text-xs text-muted text-center">
+                使用手机「扫一扫」下载
+              </p>
+            </div>
+          </template>
+        </UPopover>
+      </template>
     </UPageCTA>
   </div>
 </template>
