@@ -10,11 +10,11 @@ export default defineCachedEventHandler(
     ]);
 
     return {
-      siteTitle: values.site_seo_title || "全盘搜 - 免费网盘资源搜索引擎",
-      siteShortTitle: values.site_seo_short_title || "全盘搜",
+      siteTitle: values.site_seo_title || "下歌吧 - 免费网盘资源搜索引擎",
+      siteShortTitle: values.site_seo_short_title || "下歌吧",
       siteDescription:
         values.site_seo_description ||
-        "全盘搜是一个快捷便利的公开网盘搜索引擎，为您提供各类网盘资源的在线搜索、精准筛选服务。",
+        "下歌吧是一个快捷便利的公开网盘搜索引擎，为您提供各类网盘资源的在线搜索、精准筛选服务。",
       icpLicence: values.site_icp_licence || "",
     };
   },

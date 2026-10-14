@@ -118,8 +118,8 @@ export default defineNuxtConfig({
         // 应用清单配置（控制 PWA 安装到手机或桌面端后的外观和行为）
         manifest: {
           id: "/", // PWA 的唯一标识符，防止由于 start_url 改变导致生成两个应用
-          name: "全盘搜", // 应用的完整名称（安装时显示）
-          short_name: "全盘搜", // 应用的简短名称（桌面图标下方显示）
+          name: "下歌吧", // 应用的完整名称（安装时显示）
+          short_name: "下歌吧", // 应用的简短名称（桌面图标下方显示）
           description:
             "一个快捷便利的公开网盘搜索引擎，为您提供各类优质网盘资源的在线搜索", // 应用描述
           lang: "zh-CN", // 应用默认语言
@@ -273,7 +273,7 @@ export default defineNuxtConfig({
     baseURL: "/",
     head: {
       htmlAttrs: { lang: "zh-CN" },
-      title: "全盘搜 - 免费网盘资源搜索引擎",
+      title: "下歌吧 - 免费网盘资源搜索引擎",
       meta: [
         { charset: "utf-8" },
         {
@@ -284,22 +284,22 @@ export default defineNuxtConfig({
         {
           name: "keywords",
           content:
-            "全盘搜,网盘搜索,搜索引擎,公开网盘,资源搜索,百度网盘,夸克网盘,迅雷云盘,UC网盘,免费资源",
+            "下歌吧,网盘搜索,搜索引擎,公开网盘,资源搜索,百度网盘,夸克网盘,迅雷云盘,UC网盘,免费资源",
         },
         {
           name: "description",
           content:
-            "全盘搜是一个快捷便利的公开网盘搜索引擎，为您提供各类优质网盘资源的在线搜索、精准筛选服务。",
+            "下歌吧是一个快捷便利的公开网盘搜索引擎，为您提供各类优质网盘资源的在线搜索、精准筛选服务。",
         },
-        { property: "og:site_name", content: "全盘搜" },
+        { property: "og:site_name", content: "下歌吧" },
         { property: "og:type", content: "website" },
-        { property: "og:title", content: "全盘搜 - 免费网盘资源搜索引擎" },
+        { property: "og:title", content: "下歌吧 - 免费网盘资源搜索引擎" },
         {
           property: "og:description",
           content:
-            "全盘搜是一个快捷便利的公开网盘搜索引擎，为您提供各类优质网盘资源的在线搜索、精准筛选服务。",
+            "下歌吧是一个快捷便利的公开网盘搜索引擎，为您提供各类优质网盘资源的在线搜索、精准筛选服务。",
         },
-        { name: "twitter:title", content: "全盘搜 - 免费网盘资源搜索引擎" },
+        { name: "twitter:title", content: "下歌吧 - 免费网盘资源搜索引擎" },
         {
           name: "twitter:description",
           content: "快捷便利的公开网盘搜索引擎，轻松找资源。",
@@ -307,7 +307,7 @@ export default defineNuxtConfig({
         { property: "twitter:card", content: "summary_large_image" },
         { name: "robots", content: "index,follow" },
         { name: "theme-color", content: "#0f172a" },
-        { name: "author", content: "全盘搜" },
+        { name: "author", content: "下歌吧" },
       ],
       link: [
         { rel: "icon", href: "/favicon.ico", sizes: "any" },

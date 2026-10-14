@@ -22,6 +22,7 @@ export const LAYOUT_LINK_PRESETS = [
     to: "/page/forbidden-keywords",
     icon: "shield-ban",
   },
+  { key: "app", label: "APP下载", to: "/page/app", icon: "download" },
 ] as const;
 
 export type LayoutPresetKey = (typeof LAYOUT_LINK_PRESETS)[number]["key"];

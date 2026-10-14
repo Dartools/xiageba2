@@ -59,7 +59,7 @@ export const sendEmail = async (
   const siteShortTitle =
     process.env.SMTP_FROM_NAME ||
     (await getConfigValue("site_seo_short_title")) ||
-    "全盘搜";
+    "下歌吧";
 
   const transport = getTransporter(siteShortTitle);
   if (!transport) {
@@ -102,7 +102,7 @@ export const sendFeedbackResolvedEmail = async (
   const siteShortTitle =
     process.env.SMTP_FROM_NAME ||
     (await getConfigValue("site_seo_short_title")) ||
-    "全盘搜";
+    "下歌吧";
   const typeLabel = typeLabels[feedbackType] || feedbackType;
   const siteHost = process.env.SITE_HOST || "";
   const musicUrl = siteHost
