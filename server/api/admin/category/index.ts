@@ -1,4 +1,5 @@
 import { prisma } from "#server/lib/prisma";
+import { clearCategoryNameMapCache } from "#server/lib/categoryCache";
 
 export default defineEventHandler(async (event) => {
   const method = event.method;
@@ -44,6 +45,7 @@ export default defineEventHandler(async (event) => {
       },
     });
 
+    await clearCategoryNameMapCache();
     return { success: true, data: category };
   }
 

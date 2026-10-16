@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Loader2 } from "@lucide/vue";
-import type { SourceItem } from "~/components/LocalResourceItem.vue";
+import { type ISourceItem } from "#shared/type";
 import type { ApiErrorResponse } from "~/utils/type";
 
 const route = useRoute();
@@ -14,7 +14,7 @@ interface CategoryDetail {
 
 interface CategoryListData {
   category: CategoryDetail;
-  data: SourceItem[];
+  data: ISourceItem[];
   total: number;
   page: number;
   pageSize: number;
@@ -122,7 +122,7 @@ watch(
   () => {
     if (import.meta.client) {
       stopPanCheck();
-      const ids = (data.value.data as SourceItem[])
+      const ids = (data.value.data as ISourceItem[])
         .filter(
           (item) =>
             item.type !== "magnet" &&
@@ -142,7 +142,7 @@ const treeModalContent = ref("");
 const treeModalLoading = ref(false);
 const treeModalError = ref("");
 
-const openTreeModal = async ({ item }: { item: SourceItem }) => {
+const openTreeModal = async ({ item }: { item: ISourceItem }) => {
   treeModalTitle.value = item.title || "";
   treeModalContent.value = "";
   treeModalError.value = "";
@@ -150,7 +150,7 @@ const openTreeModal = async ({ item }: { item: SourceItem }) => {
   showTreeModal.value = true;
 
   try {
-    const query = `id=${(item as SourceItem).id}`;
+    const query = `id=${(item as ISourceItem).id}`;
     const res = await fetch(`/api/source/tree?${query}`);
     const data = await res.json();
     if (res.ok && data.success) {
@@ -182,7 +182,7 @@ const setModalLoading = (title: string) => {
   showModal.value = true;
 };
 
-const openModal = async ({ item }: { item: SourceItem }) => {
+const openModal = async ({ item }: { item: ISourceItem }) => {
   setModalLoading(item.title || "");
 
   try {

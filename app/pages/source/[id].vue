@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import { Download, FolderOpen, Clock, Link, Loader2 } from "@lucide/vue";
+import { FolderOpen, Clock, Link, LayoutGrid } from "@lucide/vue";
 import {
   getStorageTypeFriendShortFromFilter,
   type PanFilter,
@@ -9,6 +9,7 @@ import { useMusicStore } from "~/stores/music";
 import { safeMarkdownPlugins } from "~/utils/comark";
 import type { ApiErrorResponse } from "~/utils/type";
 import { useShare } from "@vueuse/core";
+import type { ISourceItem } from "#shared/type";
 
 const { share, isSupported: isShareSupported } = useShare();
 
@@ -18,16 +19,6 @@ const router = useRouter();
 // 使用响应式 computed，保证 SPA 内 /source/A → /source/B 切换时 useFetch 会重新请求
 const sourceId = computed(() => route.params.id as string);
 
-interface Source {
-  id: string;
-  title: string;
-  description: string;
-  menu: string;
-  createdAt: string;
-  type: PanFilter;
-  status: number;
-}
-
 interface SimilarItem {
   id: string;
   title: string;
@@ -35,7 +26,7 @@ interface SimilarItem {
 }
 
 interface SourceResponse {
-  data: Source;
+  data: ISourceItem;
   similar?: SimilarItem[];
 }
 
@@ -258,7 +249,11 @@ onMounted(() => {
           <h1 class="text-xl font-semibold mb-2 line-clamp-2">
             {{ source.title }}
           </h1>
-          <div class="flex items-center gap-3 text-sm text-gray-500">
+          <div class="flex items-center gap-3 text-sm text-gray-500 flex-wrap">
+            <span v-if="source.cat" class="flex items-center gap-1">
+              <LayoutGrid class="size-4" />
+              {{ source.cat }}
+            </span>
             <span class="flex items-center gap-1">
               <Link class="size-4" />
               {{ getStorageTypeFriendFromFilter(source.type) }}

@@ -1,6 +1,7 @@
 import { prisma } from "#server/lib/prisma";
 import { getStorageType } from "#shared/utils";
 import { cutForSearch, buildSearchWebQuery } from "#server/utils/jieba";
+import { getCategoryNameMap } from "#server/lib/categoryCache";
 
 export default defineEventHandler(async (event) => {
   const id = event.context.params?.id as string;
@@ -15,6 +16,7 @@ export default defineEventHandler(async (event) => {
   const source = await prisma.source.findUnique({
     select: {
       id: true,
+      cid: true,
       title: true,
       createdAt: true,
       description: true,
@@ -33,7 +35,14 @@ export default defineEventHandler(async (event) => {
   const type = getStorageType(source.url);
 
   const { url, ...rest } = source;
-  const data = { ...rest, type };
+  const data = { ...rest, type, cat: "" };
+
+  if (source.cid) {
+    const categoryMap = await getCategoryNameMap();
+    if (categoryMap[source.cid]) {
+      data.cat = categoryMap[source.cid] || "";
+    }
+  }
 
   if (similar) {
     const tokens = cutForSearch(source.title);

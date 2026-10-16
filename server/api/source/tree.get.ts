@@ -140,8 +140,8 @@ export default defineEventHandler(async (event) => {
       "\n(文件过多，已截断显示)",
     );
 
-    // 写入 Redis 缓存（保存24小时）
-    await setRedisCache(cacheKey, truncateTree, 24 * 60 * 60);
+    // 写入 Redis 缓存（保存6小时）
+    await setRedisCache(cacheKey, truncateTree, 6 * 60 * 60);
 
     // 异步写库：改用非阻塞式后台运行，不再挂起当前的 HTTP 响应时间
     if (sourceId && truncateTree) {

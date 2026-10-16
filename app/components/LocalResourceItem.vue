@@ -1,28 +1,26 @@
 <script setup lang="ts">
-import { CheckCircle, XCircle, Loader2, CalendarDays } from "@lucide/vue";
-import { getStorageTypeFriendFromFilter, type PanFilter } from "#shared/utils";
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  CalendarDays,
+  LayoutGrid,
+} from "@lucide/vue";
+import { getStorageTypeFriendFromFilter } from "#shared/utils";
 import { type CheckStatus } from "@/composables/usePanCheck";
 import { isWithinDays } from "@/utils";
-
-export interface SourceItem {
-  id: string;
-  title: string;
-  type: PanFilter;
-  menu: string;
-  isSelf?: boolean;
-  createdAt: string;
-}
+import { type ISourceItem } from "#shared/type";
 
 defineProps<{
-  item: SourceItem;
+  item: ISourceItem;
   checkStatus?: CheckStatus;
   highlightHtml?: string;
   highlightMenu?: string;
 }>();
 
 const emit = defineEmits<{
-  openTree: [item: SourceItem];
-  openModal: [item: SourceItem];
+  openTree: [item: ISourceItem];
+  openModal: [item: ISourceItem];
 }>();
 </script>
 
@@ -49,6 +47,10 @@ const emit = defineEmits<{
       </NuxtLink>
 
       <span class="text-xs text-muted flex items-center gap-1 max-sm:hidden">
+        <template v-if="item.cat">
+          <LayoutGrid class="size-3" />
+          <div class="mr-1">{{ item.cat }}</div>
+        </template>
         <CalendarDays class="size-3" />
         <NuxtTime
           :datetime="item.createdAt"
@@ -142,6 +144,10 @@ const emit = defineEmits<{
         <span
           class="text-xs text-muted flex items-center gap-1 sm:hidden mr-auto"
         >
+          <template v-if="item.cat">
+            <LayoutGrid class="size-3" />
+            <div class="mr-1">{{ item.cat }}</div>
+          </template>
           <CalendarDays class="size-3" />
           <NuxtTime
             :datetime="item.createdAt"

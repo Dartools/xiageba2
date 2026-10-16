@@ -10,7 +10,7 @@ import {
 import WebSearchResults from "~/components/WebSearchResults.vue";
 import type { WebSearchResult } from "~/components/WebSearchResults.vue";
 import LocalResourceItem from "~/components/LocalResourceItem.vue";
-import type { SourceItem } from "~/components/LocalResourceItem.vue";
+import { type ISourceItem } from "#shared/type";
 import {
   RESOURCE_FILE_TYPE_OPTIONS,
   normalizeResourceFileTypes,
@@ -52,7 +52,7 @@ const openTreeModal = async ({
   type,
 }:
   | {
-      item: SourceItem;
+      item: ISourceItem;
       type: "id";
     }
   | {
@@ -68,7 +68,7 @@ const openTreeModal = async ({
   try {
     const query =
       type === "id"
-        ? `id=${(item as SourceItem).id}`
+        ? `id=${(item as ISourceItem).id}`
         : `url=${encodeURIComponent(item.url)}`;
     const res = await fetch(`/api/source/tree?${query}`);
     const data = await res.json();
@@ -97,7 +97,7 @@ const openModal = async ({
   type,
 }:
   | {
-      item: SourceItem;
+      item: ISourceItem;
       type: "id";
     }
   | {
@@ -281,7 +281,7 @@ const {
   },
 );
 
-const results = computed<MusicSearch[] | SourceItem[]>(
+const results = computed<MusicSearch[] | ISourceItem[]>(
   () => pageData.value?.data || [],
 );
 const total = computed(() => pageData.value?.total || 0);
@@ -460,7 +460,7 @@ watch(
     if (import.meta.client) {
       stopPanCheck();
       if (!isMusic.value && results.value.length > 0) {
-        const ids = (results.value as SourceItem[])
+        const ids = (results.value as ISourceItem[])
           // 不进行检测的类型
           .filter(({ type }) => !["magnet", "guangya", "139"].includes(type))
           .map((item) => item.id);
@@ -767,7 +767,7 @@ watch(
             </div>
             <template v-if="results.length > 0">
               <LocalResourceItem
-                v-for="item in <SourceItem[]>results"
+                v-for="item in <ISourceItem[]>results"
                 :key="item.id"
                 :item="item"
                 :check-status="getCheckStatus(item.id)"

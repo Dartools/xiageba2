@@ -1,4 +1,5 @@
 import { prisma } from "#server/lib/prisma";
+import { clearCategoryNameMapCache } from "#server/lib/categoryCache";
 
 export default defineEventHandler(async (event) => {
   if (!event.context.params?.id) {
@@ -36,11 +37,13 @@ export default defineEventHandler(async (event) => {
       data,
     });
 
+    await clearCategoryNameMapCache();
     return { success: true, data: category };
   }
 
   if (method === "DELETE") {
     await prisma.category.delete({ where: { id } });
+    await clearCategoryNameMapCache();
     return { success: true };
   }
 

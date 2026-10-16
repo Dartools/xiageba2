@@ -9,8 +9,10 @@ import {
 } from "#shared/resource-file-types";
 import { automaton_websearch_filter_keywords } from "#server/lib/simpleAC";
 import { getRedisCache, setRedisCache } from "#server/lib/redis";
+import { getCategoryNameMap } from "#server/lib/categoryCache";
 import { Prisma } from "@@/prisma/generated";
 import { prisma } from "#server/lib/prisma";
+import { type ISourceItem } from "#shared/type";
 
 const MAX_PAGE = 100;
 const MAX_KEYWORD_LENGTH = 30;
@@ -38,7 +40,16 @@ export const PAN_HOST_MAP: Partial<Record<PanFilter, string[]>> = {
 };
 
 export default defineCachedEventHandler(
-  async (event) => {
+  async (
+    event,
+  ): Promise<{
+    data: ISourceItem[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    tokens: string[];
+  }> => {
     const query = getQuery(event);
     const term = (query.q as string)?.trim() || "";
     const page = Math.min(
@@ -240,7 +251,7 @@ export default defineCachedEventHandler(
         ORDER BY ${candidateOrderClause}
         LIMIT ${pageSize} OFFSET ${skip}
       )
-      SELECT s.id, s.title, s.url, s.menu, s."isSelf", s."createdAt"
+      SELECT s.id, s.title, s.url, s.menu, s."isSelf", s."createdAt", s.cid
       FROM ranked
       JOIN "Source" s ON s.id = ranked.rid
       CROSS JOIN search_query
@@ -285,6 +296,15 @@ export default defineCachedEventHandler(
       totalCount = countRows[0]?.count || 0;
       // 缓存计数结果
       await setRedisCache(totalCacheKey, totalCount, 10 * 60);
+    }
+
+    // 分类名：SQL 只取 cid（不 JOIN Category），回代码里用 new Set 去重后
+    // 匹配缓存的全量分类映射（id -> name）
+    const categoryMap = await getCategoryNameMap();
+    for (const item of sources) {
+      if (item.cid && categoryMap[item.cid]) {
+        item.cat = categoryMap[item.cid] || "";
+      }
     }
 
     sources.forEach((item) => {
