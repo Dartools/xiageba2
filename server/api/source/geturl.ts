@@ -957,6 +957,9 @@ async function transferGuangya(
   // 步骤3: 列出分享文件
   const shareFiles = await listGuangyaShareFiles(shareApi, accessToken);
   if (shareFiles.length === 0) {
+    if (sourceId) {
+      event.waitUntil(disableSource(sourceId));
+    }
     throw createError({ statusCode: 404, message: "分享内容为空" });
   }
   const fileIds = shareFiles.map((f) => f.fid);
