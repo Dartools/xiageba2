@@ -11,7 +11,7 @@ const route = useRoute();
 // 使用响应式 computed，保证 SPA 内 /announcement/A → /announcement/B 切换时 useFetch 会重新请求
 const announcementId = computed(() => route.params.id as string);
 
-const { data: responseData } = await useLazyFetch<{
+const { data: responseData, pending } = await useLazyFetch<{
   data: Announcement;
 }>(() => `/api/announcement/${announcementId.value}`, {
   key: () => `announcement-${announcementId.value}`,
@@ -42,13 +42,26 @@ useSeoMeta({
     </h1>
   </div>
 
+  <UCard v-if="pending">
+    <div class="flex items-center gap-4 mb-4">
+      <USkeleton class="size-10 rounded-lg" />
+      <div>
+        <USkeleton class="h-7 w-62.5" />
+        <USkeleton class="h-4 w-62.5 mt-1" />
+      </div>
+    </div>
+    <USkeleton class="h-4 w-1/1 mt-1" />
+    <USkeleton class="h-4 w-1/2 mt-1" />
+    <USkeleton class="h-4 w-1/3 mt-1" />
+  </UCard>
+
   <UCard
-    v-if="isNotFound"
+    v-else-if="isNotFound"
     :ui="{
       body: 'p-12 text-center',
     }"
   >
-    <Megaphone class="w-12 h-12 mx-auto text-zinc-600 mb-3" />
+    <Megaphone class="size-12 mx-auto text-zinc-600 mb-3" />
     <p class="text-muted">公告不存在</p>
   </UCard>
 
