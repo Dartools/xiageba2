@@ -3,11 +3,14 @@ import { Megaphone, ChevronRight, X } from "@lucide/vue";
 import { useIntervalFn, useLocalStorage } from "@vueuse/core";
 import type { Announcement } from "~/utils/announcement";
 
-const { data } = await useLazyFetch<{ data: Announcement[] }>("/api/announcement", {
-  query: { pageSize: 10 },
-  server: true,
-  default: () => ({ data: [] }),
-});
+const { data } = await useLazyFetch<{ data: Announcement[] }>(
+  "/api/announcement",
+  {
+    query: { pageSize: 10 },
+    server: true,
+    default: () => ({ data: [] }),
+  },
+);
 
 const allAnnouncements = computed(() => data.value?.data || []);
 
@@ -139,7 +142,16 @@ watch(normalList, () => {
         :title="item.title"
         :icon="map[item.icon].icon"
         :color="map[item.icon].alert"
-      />
+        :ui="{
+          wrapper: 'flex-row',
+          description: 'mt-0 shrink-0 ml-2',
+          title: 'truncate',
+        }"
+      >
+        <template #description>
+          <NuxtTime :datetime="item.createdAt" relative />
+        </template>
+      </UAlert>
     </NuxtLink>
   </div>
 
