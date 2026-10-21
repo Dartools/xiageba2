@@ -16,9 +16,7 @@ services:
       start_period: 20s
 
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ${XIAGEBA_IMAGE:-xiageba:latest}
     restart: unless-stopped
     env_file:
       - .env
