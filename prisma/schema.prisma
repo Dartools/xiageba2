@@ -50,12 +50,14 @@ model Music {
   playUrl      String                   @db.VarChar(2048)
   downloads    Json                     @default("[]")
   viewCount    Int                      @default(0)
+  status       Int                      @default(1) @db.SmallInt // 1=启用 0=停用
   createdAt    DateTime                 @default(now()) @db.Timestamptz(3)
   updatedAt    DateTime?                @updatedAt @db.Timestamptz(3)
   searchVector Unsupported("tsvector")?
 
   @@index([createdAt])
   @@index([viewCount])
+  @@index([status])
   @@index([searchVector], type: Gin)
 }
 

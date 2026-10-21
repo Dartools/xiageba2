@@ -162,7 +162,7 @@ const searchPanSou = async (
 
   const body = {
     kw: keyword,
-    // cloud_types: ["quark", "baidu", "uc", "xunlei"],
+    cloud_types: ["quark", "baidu", "uc", "xunlei", "guangya", "mobile"],
     src: "all",
     res: "merged_by_type",
     ext: { is_all: true },

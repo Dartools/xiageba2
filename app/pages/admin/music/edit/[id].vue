@@ -73,7 +73,8 @@ onMounted(async () => {
 
   if (id.value) {
     try {
-      const data = await get(`/api/music/${id.value}?timestamp=${Date.now()}`);
+      // 走后台接口：禁用的歌曲也要能加载编辑，且不产生公开接口的浏览量副作用
+      const data = await get(`/api/admin/music/${id.value}`);
       form.value = {
         title: data.title,
         artist: data.artist,

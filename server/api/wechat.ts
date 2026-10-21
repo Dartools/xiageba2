@@ -280,6 +280,7 @@ async function searchResources(
         SELECT m.id, m.title, m.artist, m.album
         FROM "Music" m, pq
         WHERE pq.q IS NOT NULL
+          AND m.status = 1
           AND m."searchVector" @@ pq.q
         ORDER BY ts_rank(m."searchVector", pq.q, 1) DESC,
                  m."viewCount" DESC,

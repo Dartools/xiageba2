@@ -24,11 +24,17 @@ export default defineEventHandler(async (event) => {
       lyrics: true,
       playUrl: true,
       downloads: true,
+      status: true,
     },
     where: { id },
   });
 
   if (!music) {
+    throw createError({ statusCode: 404, message: "音乐不存在" });
+  }
+
+  // 后台禁用的歌曲不对外暴露（与资源详情接口行为一致）
+  if (music.status === 0) {
     throw createError({ statusCode: 404, message: "音乐不存在" });
   }
 

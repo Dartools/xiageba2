@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuth } from "~/composables/useAuth";
-import { get, del } from "~/utils/request";
+import { get, post, put, del } from "~/utils/request";
 import { Search, Loader2 } from "@lucide/vue";
 import type { TableColumn } from "@nuxt/ui";
 import AdminPagination from "~/components/admin/AdminPagination.vue";
@@ -16,6 +16,7 @@ const config = useRuntimeConfig();
 const router = useRouter();
 const route = useRoute();
 const { isLoggedIn, logout, checkLogin, initialized } = useAuth();
+const toast = useToast();
 
 const musics = ref<MusicType[]>([]);
 const searchQuery = ref("");
@@ -26,10 +27,25 @@ const totalPages = ref(0);
 const isLoading = ref(false);
 
 const columns: TableColumn<MusicType>[] = [
+  {
+    id: "select",
+    enableHiding: false,
+    meta: {
+      class: { th: "w-10", td: "w-10" },
+    },
+  },
   { id: "cover", accessorKey: "cover", header: "封面" },
   { id: "title", accessorKey: "title", header: "歌名" },
   { id: "artist", accessorKey: "artist", header: "歌手" },
   { id: "album", accessorKey: "album", header: "专辑" },
+  {
+    id: "status",
+    accessorKey: "status",
+    header: "状态",
+    meta: {
+      class: { th: "text-center", td: "text-center" },
+    },
+  },
   {
     id: "actions",
     header: "操作",
@@ -97,6 +113,8 @@ const loadMusic = async () => {
     totalPages.value = data.totalPages;
   } finally {
     isLoading.value = false;
+    // 数据刷新后清除选择状态，避免残留已不存在的行
+    clearSelection();
   }
 };
 
@@ -134,6 +152,91 @@ const deleteMusic = async (id: string) => {
 
   await del("/api/admin/music", { data: { id } });
   await loadMusic();
+};
+
+// ============ 状态开关 ============
+const toggleStatus = async (item: MusicType) => {
+  const newStatus = item.status === 1 ? 0 : 1;
+
+  try {
+    await put("/api/admin/music", {
+      id: item.id,
+      status: newStatus,
+    });
+    await loadMusic();
+  } catch {
+    // 忽略，401 由拦截器处理
+  }
+};
+
+// ============ 批量操作 ============
+const rowSelection = ref<Record<string, boolean>>({});
+const selectedIds = computed(() =>
+  Object.keys(rowSelection.value).filter((key) => rowSelection.value[key]),
+);
+const batchOperating = ref(false);
+
+const clearSelection = () => {
+  rowSelection.value = {};
+};
+
+const batchUpdateStatus = async (status: number) => {
+  const ids = selectedIds.value;
+  if (!ids.length || batchOperating.value) return;
+
+  batchOperating.value = true;
+  try {
+    const data = await post("/api/admin/music/batch", {
+      action: "status",
+      ids,
+      status,
+    });
+    toast.add({
+      title:
+        status === 1
+          ? `已启用 ${data.count} 首音乐`
+          : `已禁用 ${data.count} 首音乐`,
+      icon: "i-lucide-check",
+      color: "success",
+    });
+    await loadMusic();
+  } catch (e: any) {
+    toast.add({
+      title: e?.response?.data?.message || "批量操作失败",
+      color: "error",
+    });
+  } finally {
+    batchOperating.value = false;
+  }
+};
+
+const batchDelete = async () => {
+  const ids = selectedIds.value;
+  if (!ids.length || batchOperating.value) return;
+  if (!confirm(`确定要删除选中的 ${ids.length} 首音乐吗？删除后不可恢复。`)) {
+    return;
+  }
+
+  batchOperating.value = true;
+  try {
+    const data = await post("/api/admin/music/batch", {
+      action: "delete",
+      ids,
+    });
+    toast.add({
+      title: `已删除 ${data.count} 首音乐`,
+      icon: "i-lucide-check",
+      color: "success",
+    });
+    await loadMusic();
+  } catch (e: any) {
+    toast.add({
+      title: e?.response?.data?.message || "批量删除失败",
+      color: "error",
+    });
+  } finally {
+    batchOperating.value = false;
+  }
 };
 
 const goToPage = (page: number) => {
@@ -174,10 +277,34 @@ const goToPage = (page: number) => {
   >
     <UTable
       @hover="() => {}"
+      v-model:row-selection="rowSelection"
       :data="isLoading ? [] : musics"
       :columns="columns"
       :get-row-id="(row: MusicType) => row.id"
     >
+      <template #select-header="{ table }">
+        <UCheckbox
+          :model-value="
+            table.getIsSomePageRowsSelected()
+              ? 'indeterminate'
+              : table.getIsAllPageRowsSelected()
+          "
+          aria-label="全选"
+          @update:model-value="
+            (value: boolean | 'indeterminate') =>
+              table.toggleAllPageRowsSelected(!!value)
+          "
+        />
+      </template>
+      <template #select-cell="{ row }">
+        <UCheckbox
+          :model-value="row.getIsSelected()"
+          aria-label="选择该行"
+          @update:model-value="
+            (value: boolean | 'indeterminate') => row.toggleSelected(!!value)
+          "
+        />
+      </template>
       <template #cover-cell="{ row }">
         <img
           :src="row.original.cover || config.app.baseURL + 'img/cover.png'"
@@ -201,6 +328,19 @@ const goToPage = (page: number) => {
           :title="row.original.album || '-'"
           >{{ row.original.album || "-" }}</span
         >
+      </template>
+      <template #status-cell="{ row }">
+        <UButton
+          size="sm"
+          :color="row.original.status === 1 ? 'success' : 'neutral'"
+          variant="subtle"
+          :icon="
+            row.original.status === 1 ? 'i-lucide-check' : 'i-lucide-circle-off'
+          "
+          @click="toggleStatus(row.original)"
+        >
+          {{ row.original.status === 1 ? "启用" : "禁用" }}
+        </UButton>
       </template>
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-center gap-2">
@@ -234,6 +374,52 @@ const goToPage = (page: number) => {
         <p v-else class="text-center text-muted py-12">暂无音乐</p>
       </template>
     </UTable>
+
+    <div
+      v-if="selectedIds.length"
+      class="flex flex-wrap items-center gap-2 px-2 py-3 border-t border-default"
+    >
+      <span class="text-sm text-muted">已选 {{ selectedIds.length }} 项</span>
+      <UButton
+        size="sm"
+        color="success"
+        variant="soft"
+        icon="i-lucide-circle-check"
+        :loading="batchOperating"
+        @click="batchUpdateStatus(1)"
+      >
+        批量启用
+      </UButton>
+      <UButton
+        size="sm"
+        color="neutral"
+        variant="soft"
+        icon="i-lucide-circle-off"
+        :loading="batchOperating"
+        @click="batchUpdateStatus(0)"
+      >
+        批量禁用
+      </UButton>
+      <UButton
+        size="sm"
+        color="error"
+        variant="soft"
+        icon="i-lucide-trash-2"
+        :loading="batchOperating"
+        @click="batchDelete"
+      >
+        批量删除
+      </UButton>
+      <UButton
+        size="sm"
+        color="neutral"
+        variant="ghost"
+        :disabled="batchOperating"
+        @click="clearSelection"
+      >
+        取消选择
+      </UButton>
+    </div>
   </UCard>
   <!-- 分页 -->
   <AdminPagination

@@ -151,7 +151,10 @@ export const countSitemapSources = defineCachedFunction(
 
 /** 音乐总数（缓存 1 小时） */
 export const countSitemapMusics = defineCachedFunction(
-  async (): Promise<number> => prisma.music.count(),
+  async (): Promise<number> =>
+    prisma.music.count({
+      where: { status: 1 },
+    }),
   {
     name: "sitemap-count-music",
     maxAge: SITEMAP_MAX_AGE,
@@ -185,6 +188,7 @@ export async function fetchMusicUrls(
   page: number,
 ): Promise<SitemapUrl[]> {
   const rows = await prisma.music.findMany({
+    where: { status: 1 },
     select: { id: true, createdAt: true, updatedAt: true },
     orderBy: { createdAt: "desc" },
     skip: (page - 1) * SITEMAP_PAGE_SIZE,

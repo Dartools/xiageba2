@@ -149,7 +149,8 @@ async function searchMusicForAi(keyword: string) {
     const musics = await prisma.$queryRaw<any[]>`
       SELECT id, title, artist, album
       FROM "Music"
-      WHERE "searchVector" @@ to_tsquery('simple', ${formattedWebQuery})
+      WHERE status = 1
+        AND "searchVector" @@ to_tsquery('simple', ${formattedWebQuery})
       ORDER BY 
         ts_rank_cd("searchVector", to_tsquery('simple', ${formattedWebQuery}), 1) DESC, 
         "viewCount" DESC, 

@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
             FROM "Music"
             WHERE "searchVector" @@ to_tsquery('simple', ${formattedWebQuery})
           )
-          SELECT m.id, m.title, m.artist, m.album, m.cover, m.downloads
+          SELECT m.id, m.title, m.artist, m.album, m.cover, m.downloads, m.status
           FROM hit_rows h
           JOIN "Music" m USING(id)
           ORDER BY h.rank DESC, m."createdAt" DESC
@@ -70,6 +70,7 @@ export default defineEventHandler(async (event) => {
           album: true,
           cover: true,
           downloads: true, // 🛠️ 修复：此前漏了选择该字段，导致下方 JSON.parse 崩溃
+          status: true,
         },
         orderBy: { createdAt: "desc" },
         skip,
@@ -127,34 +128,46 @@ export default defineEventHandler(async (event) => {
 
   if (method === "PUT") {
     const body = await readBody(event);
-    const { id, title, artist, album, cover, lyrics, playUrl, downloads } =
+    const { id, title, artist, album, cover, lyrics, playUrl, downloads, status } =
       body;
 
     if (!id) {
       throw createError({ statusCode: 400, message: "缺少音乐ID" });
     }
 
-    // 1) 先由 Prisma 更新基础数据
+    // 部分字段更新：只写入显式传入的字段。
+    // 状态开关只会传 { id, status }，若按全量字段更新会把 downloads 等清空。
+    const data: any = {};
+    if (title !== undefined) data.title = title;
+    if (artist !== undefined) data.artist = artist;
+    if (album !== undefined) data.album = album;
+    if (cover !== undefined) data.cover = cover;
+    if (lyrics !== undefined) data.lyrics = lyrics;
+    if (playUrl !== undefined) data.playUrl = playUrl;
+    if (downloads !== undefined) data.downloads = downloads || [];
+    if (status !== undefined) {
+      data.status = status === 0 || status === "0" ? 0 : 1;
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw createError({ statusCode: 400, message: "没有需要更新的字段" });
+    }
+
+    // 1) 由 Prisma 更新数据
     const music = await prisma.music.update({
       where: { id },
-      data: {
-        title,
-        artist,
-        album,
-        cover,
-        lyrics,
-        playUrl,
-        downloads: downloads || [],
-      },
+      data,
     });
 
-    // 2) 更新对应的全文检索向量
-    const searchVectorTokens = buildTokens(
-      music.title || "",
-      music.artist || "",
-      music.album || "",
-    );
-    await prisma.$executeRaw`UPDATE "Music" SET "searchVector" = to_tsvector('simple', ${searchVectorTokens}) WHERE id = ${music.id}`;
+    // 2) 标题/歌手/专辑变化时才需要重建全文检索向量（纯切状态不重建）
+    if (title !== undefined || artist !== undefined || album !== undefined) {
+      const searchVectorTokens = buildTokens(
+        music.title || "",
+        music.artist || "",
+        music.album || "",
+      );
+      await prisma.$executeRaw`UPDATE "Music" SET "searchVector" = to_tsvector('simple', ${searchVectorTokens}) WHERE id = ${music.id}`;
+    }
 
     // 清理 ISR 缓存
     const storage = useStorage(`cache:nuxt:payload:`);

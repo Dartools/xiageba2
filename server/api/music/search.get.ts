@@ -14,8 +14,9 @@ const buildTierUnion = (tiers: SearchTier[], cap: number): Prisma.Sql =>
       .map(
         // ⚠️ 每个 UNION ALL 分支必须加括号：PostgreSQL 不允许在 UNION 的左/右分支上
         //    直接挂 ORDER BY / LIMIT，只有括起来才是合法的独立子查询。
+        // status = 1：后台禁用的歌曲不参与搜索召回（候选集与计数都走这里）
         (tier, index) =>
-          Prisma.sql`(SELECT m.id, ${index + 1}::int AS tier FROM "Music" m WHERE m."searchVector" @@ to_tsquery('simple', ${tier.query}) LIMIT ${cap})`,
+          Prisma.sql`(SELECT m.id, ${index + 1}::int AS tier FROM "Music" m WHERE m.status = 1 AND m."searchVector" @@ to_tsquery('simple', ${tier.query}) LIMIT ${cap})`,
       ),
     " UNION ALL ",
   );

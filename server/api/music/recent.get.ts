@@ -15,6 +15,7 @@ export default defineEventHandler(async (event) => {
       artist: true,
       cover: true,
     },
+    where: { status: 1 },
     orderBy: { createdAt: "desc" },
     take: pageSize,
     skip,

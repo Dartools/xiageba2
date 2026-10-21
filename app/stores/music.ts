@@ -26,6 +26,7 @@ export interface Music {
   lyrics: string;
   playUrl: string;
   downloads: DownloadOption[];
+  status: number; // 1=启用 0=停用（后台管理用）
 }
 
 export const useMusicStore = defineStore("music", () => {
